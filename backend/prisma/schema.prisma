@@ -61,6 +61,7 @@ model Assinatura {
   dataFim             DateTime
   status              StatusAssinatura
   renovacaoAutomatica Boolean          @default(false)
+  tipoAtivacao        TipoAtivacao     @default(ONLINE)
 }
 
 model Unidade {
@@ -138,4 +139,9 @@ enum StatusAssinatura {
 enum StatusAgendamento {
   CONFIRMADO
   CANCELADO
+}
+
+enum TipoAtivacao {
+  ONLINE
+  MANUAL
 }
