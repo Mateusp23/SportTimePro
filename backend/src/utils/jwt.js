@@ -4,7 +4,7 @@ exports.generateToken = (user) => {
   return jwt.sign(
     {
       userId: user.id,
-      role: user.role,
+      roles: user.roles,
       clienteId: user.clienteId
     },
     process.env.JWT_SECRET,

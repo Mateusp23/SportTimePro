@@ -2,11 +2,7 @@ const prisma = require('../config/db');
 
 exports.createUnidade = async (req, res) => {
   const { nome, cidade } = req.body;
-  const { clienteId, role } = req.user;
-
-  if (role !== 'ADMIN') {
-    return res.status(403).json({ message: 'Apenas administradores podem criar unidades.' });
-  }
+  const { clienteId } = req.user;
 
   try {
     const unidade = await prisma.unidade.create({
@@ -37,11 +33,7 @@ exports.getUnidades = async (req, res) => {
 exports.updateUnidade = async (req, res) => {
   const { id } = req.params;
   const { nome, cidade } = req.body;
-  const { clienteId, role } = req.user;
-
-  if (role !== 'ADMIN') {
-    return res.status(403).json({ message: 'Apenas administradores podem atualizar unidades.' });
-  }
+  const { clienteId } = req.user;
 
   try {
     const unidade = await prisma.unidade.updateMany({
@@ -61,11 +53,7 @@ exports.updateUnidade = async (req, res) => {
 
 exports.deleteUnidade = async (req, res) => {
   const { id } = req.params;
-  const { clienteId, role } = req.user;
-
-  if (role !== 'ADMIN') {
-    return res.status(403).json({ message: 'Apenas administradores podem excluir unidades.' });
-  }
+  const { clienteId } = req.user;
 
   try {
     const unidade = await prisma.unidade.deleteMany({

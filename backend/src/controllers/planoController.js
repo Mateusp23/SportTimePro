@@ -2,11 +2,7 @@ const prisma = require('../config/db');
 
 exports.createPlano = async (req, res) => {
   const { nome, duracaoDias, preco } = req.body;
-  const { clienteId, role } = req.user;
-
-  if (role !== 'ADMIN') {
-    return res.status(403).json({ message: 'Apenas administradores podem criar planos.' });
-  }
+  const { clienteId } = req.user;
 
   try {
     const plano = await prisma.plano.create({
@@ -39,11 +35,7 @@ exports.getPlanos = async (req, res) => {
 exports.updatePlano = async (req, res) => {
   const { id } = req.params;
   const { nome, duracaoDias, preco, ativo } = req.body;
-  const { clienteId, role } = req.user;
-
-  if (role !== 'ADMIN') {
-    return res.status(403).json({ message: 'Apenas administradores podem atualizar planos.' });
-  }
+  const { clienteId } = req.user;
 
   try {
     const plano = await prisma.plano.updateMany({
@@ -63,11 +55,7 @@ exports.updatePlano = async (req, res) => {
 
 exports.deletePlano = async (req, res) => {
   const { id } = req.params;
-  const { clienteId, role } = req.user;
-
-  if (role !== 'ADMIN') {
-    return res.status(403).json({ message: 'Apenas administradores podem excluir planos.' });
-  }
+  const { clienteId } = req.user;
 
   try {
     const plano = await prisma.plano.deleteMany({

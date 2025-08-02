@@ -1,18 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middlewares/authMiddleware');
 const {
   createUnidade,
   getUnidades,
   updateUnidade,
   deleteUnidade
 } = require('../controllers/unidadeController');
+const authMiddleware = require('../middlewares/authMiddleware');
 
-router.use(authMiddleware);
-
-router.post('/', createUnidade);
-router.get('/', getUnidades);
-router.put('/:id', updateUnidade);
-router.delete('/:id', deleteUnidade);
+// Apenas ADMIN pode criar, atualizar ou deletar unidades
+router.post('/', authMiddleware(['ADMIN']), createUnidade);
+router.get('/', authMiddleware(['ADMIN']), getUnidades);
+router.put('/:id', authMiddleware(['ADMIN']), updateUnidade);
+router.delete('/:id', authMiddleware(['ADMIN']), deleteUnidade);
 
 module.exports = router;

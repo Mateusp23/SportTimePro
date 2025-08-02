@@ -1,8 +1,10 @@
 const express = require('express');
 const router = express.Router();
-const { registerCliente, login } = require('../controllers/authController');
+const authController = require('../controllers/authController');
 
-router.post('/register-cliente', registerCliente);
-router.post('/login', login);
+// Corrigido para passar funções específicas
+router.post('/register-cliente', authController.registerCliente);
+router.post('/login', authController.login);
+router.post('/register-aluno', authController.registerAluno);
 
 module.exports = router;

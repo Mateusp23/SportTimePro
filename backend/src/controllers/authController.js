@@ -3,7 +3,7 @@ const bcrypt = require('bcrypt');
 const { generateToken } = require('../utils/jwt');
 
 exports.registerCliente = async (req, res) => {
-  const { nomeCliente, nomeAdmin, email, senha } = req.body;
+  const { nomeCliente, nomeAdmin, email, senha, roles } = req.body;
   try {
     const hash = await bcrypt.hash(senha, 10);
 
@@ -15,7 +15,7 @@ exports.registerCliente = async (req, res) => {
             nome: nomeAdmin,
             email,
             senhaHash: hash,
-            role: 'ADMIN'
+            roles: roles && roles.length > 0 ? roles : ['ADMIN']
           }
         }
       },
@@ -46,6 +46,34 @@ exports.login = async (req, res) => {
     const token = generateToken(user);
     return res.json({ token, user });
   } catch (err) {
+    return res.status(500).json({ message: err.message });
+  }
+};
+
+
+exports.registerAluno = async (req, res) => {
+  const { clienteId, nome, email, senha } = req.body;
+  try {
+    const hash = await bcrypt.hash(senha, 10);
+
+    const aluno = await prisma.usuario.create({
+      data: {
+        nome,
+        email,
+        senhaHash: hash,
+        roles: ['ALUNO'],
+        clienteId
+      }
+    });
+
+    return res.json({
+      message: 'Aluno cadastrado com sucesso',
+      aluno
+    });
+  } catch (err) {
+    if (err.code === 'P2002') {
+      return res.status(400).json({ message: 'Email já cadastrado.' });
+    }
     return res.status(500).json({ message: err.message });
   }
 };

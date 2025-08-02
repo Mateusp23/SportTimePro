@@ -28,7 +28,7 @@ model Usuario {
   nome                       String
   email                      String                       @unique
   senhaHash                  String
-  role                       Role                         @default(ALUNO)
+  roles                      Role[]                       @default([])
   cliente                    Cliente                      @relation(fields: [clienteId], references: [id])
   clienteId                  String
   aulas                      Aula[]                       @relation("ProfessorAulas")

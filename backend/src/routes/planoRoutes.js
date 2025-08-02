@@ -1,18 +1,17 @@
 const express = require('express');
 const router = express.Router();
-const authMiddleware = require('../middlewares/authMiddleware');
 const {
   createPlano,
   getPlanos,
   updatePlano,
   deletePlano
 } = require('../controllers/planoController');
+const authMiddleware = require('../middlewares/authMiddleware');
 
-router.use(authMiddleware); // Todas as rotas precisam de autenticação
-
-router.post('/', createPlano);
-router.get('/', getPlanos);
-router.put('/:id', updatePlano);
-router.delete('/:id', deletePlano);
+// Apenas usuários com papel ADMIN podem gerenciar planos
+router.post('/', authMiddleware(['ADMIN']), createPlano);
+router.get('/', authMiddleware(['ADMIN']), getPlanos);
+router.put('/:id', authMiddleware(['ADMIN']), updatePlano);
+router.delete('/:id', authMiddleware(['ADMIN']), deletePlano);
 
 module.exports = router;
