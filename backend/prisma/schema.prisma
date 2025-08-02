@@ -1,0 +1,141 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Cliente {
+  id       String    @id @default(uuid())
+  nome     String
+  usuarios Usuario[]
+  unidades Unidade[]
+  planos   Plano[]
+  criadoEm DateTime  @default(now())
+}
+
+model Usuario {
+  id                         String                       @id @default(uuid())
+  nome                       String
+  email                      String                       @unique
+  senhaHash                  String
+  role                       Role                         @default(ALUNO)
+  cliente                    Cliente                      @relation(fields: [clienteId], references: [id])
+  clienteId                  String
+  aulas                      Aula[]                       @relation("ProfessorAulas")
+  agendamentos               Agendamento[]
+  criadoEm                   DateTime                     @default(now())
+  atualizadoEm               DateTime                     @updatedAt
+  Assinatura                 Assinatura[]
+  IndisponibilidadeProfessor IndisponibilidadeProfessor[]
+}
+
+model Plano {
+  id          String       @id @default(uuid())
+  nome        String
+  duracaoDias Int
+  preco       Float
+  ativo       Boolean      @default(true)
+  cliente     Cliente      @relation(fields: [clienteId], references: [id])
+  clienteId   String
+  assinaturas Assinatura[]
+  criadoEm    DateTime     @default(now())
+}
+
+model Assinatura {
+  id                  String           @id @default(uuid())
+  aluno               Usuario          @relation(fields: [alunoId], references: [id])
+  alunoId             String
+  plano               Plano            @relation(fields: [planoId], references: [id])
+  planoId             String
+  dataInicio          DateTime         @default(now())
+  dataFim             DateTime
+  status              StatusAssinatura
+  renovacaoAutomatica Boolean          @default(false)
+}
+
+model Unidade {
+  id        String   @id @default(uuid())
+  nome      String
+  cidade    String
+  cliente   Cliente  @relation(fields: [clienteId], references: [id])
+  clienteId String
+  locais    Local[]
+  aulas     Aula[]
+  criadoEm  DateTime @default(now())
+}
+
+model Local {
+  id        String  @id @default(uuid())
+  nome      String
+  unidade   Unidade @relation(fields: [unidadeId], references: [id])
+  unidadeId String
+  aulas     Aula[]
+}
+
+model Aula {
+  id             String        @id @default(uuid())
+  modalidade     Modalidade
+  professor      Usuario       @relation("ProfessorAulas", fields: [professorId], references: [id])
+  professorId    String
+  unidade        Unidade       @relation(fields: [unidadeId], references: [id])
+  unidadeId      String
+  local          Local         @relation(fields: [localId], references: [id])
+  localId        String
+  dataHoraInicio DateTime
+  dataHoraFim    DateTime
+  vagasTotais    Int
+  agendamentos   Agendamento[]
+}
+
+model Agendamento {
+  id       String            @id @default(uuid())
+  aluno    Usuario           @relation(fields: [alunoId], references: [id])
+  alunoId  String
+  aula     Aula              @relation(fields: [aulaId], references: [id])
+  aulaId   String
+  status   StatusAgendamento @default(CONFIRMADO)
+  criadoEm DateTime          @default(now())
+}
+
+model IndisponibilidadeProfessor {
+  id          String   @id @default(uuid())
+  professor   Usuario  @relation(fields: [professorId], references: [id])
+  professorId String
+  dataInicio  DateTime
+  dataFim     DateTime
+  motivo      String?
+  criadoEm    DateTime @default(now())
+}
+
+enum Role {
+  ALUNO
+  PROFESSOR
+  ADMIN
+}
+
+enum Modalidade {
+  FUTEVOLEI
+  NATACAO
+  CT
+}
+
+enum StatusAssinatura {
+  ATIVO
+  INATIVO
+  CANCELADO
+}
+
+enum StatusAgendamento {
+  CONFIRMADO
+  CANCELADO
+}
