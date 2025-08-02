@@ -50,10 +50,18 @@ exports.login = async (req, res) => {
   }
 };
 
-
 exports.registerAluno = async (req, res) => {
-  const { clienteId, nome, email, senha } = req.body;
+  const { code, nome, email, senha } = req.body;
+
   try {
+    const cliente = await prisma.cliente.findFirst({
+      where: { inviteCode: code }
+    });
+
+    if (!cliente) {
+      return res.status(400).json({ message: 'Código de convite inválido.' });
+    }
+
     const hash = await bcrypt.hash(senha, 10);
 
     const aluno = await prisma.usuario.create({
@@ -62,7 +70,7 @@ exports.registerAluno = async (req, res) => {
         email,
         senhaHash: hash,
         roles: ['ALUNO'],
-        clienteId
+        clienteId: cliente.id
       }
     });
 

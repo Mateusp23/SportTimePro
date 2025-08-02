@@ -15,12 +15,13 @@ datasource db {
 }
 
 model Cliente {
-  id       String    @id @default(uuid())
-  nome     String
-  usuarios Usuario[]
-  unidades Unidade[]
-  planos   Plano[]
-  criadoEm DateTime  @default(now())
+  id         String    @id @default(uuid())
+  nome       String
+  usuarios   Usuario[]
+  unidades   Unidade[]
+  planos     Plano[]
+  inviteCode String?   @unique
+  criadoEm   DateTime  @default(now())
 }
 
 model Usuario {

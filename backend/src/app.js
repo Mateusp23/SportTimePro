@@ -10,6 +10,7 @@ const localRoutes = require('./routes/localRoutes');
 const professorRoutes = require('./routes/professorRoutes');
 const userRoutes = require('./routes/userRoutes');
 const clientRoutes = require('./routes/clientRoutes');
+const alunoRoutes = require('./routes/alunoRoutes');
 
 const app = express();
 app.use(cors());
@@ -22,5 +23,6 @@ app.use('/api/locais', localRoutes);
 app.use('/api/professores', professorRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/client', clientRoutes);
+app.use('/api/alunos', alunoRoutes);
 
 module.exports = app;
