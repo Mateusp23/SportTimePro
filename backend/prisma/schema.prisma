@@ -22,6 +22,7 @@ model Cliente {
   planos     Plano[]
   inviteCode String?   @unique
   criadoEm   DateTime  @default(now())
+  Aula       Aula[]
 }
 
 model Usuario {
@@ -97,6 +98,8 @@ model Aula {
   dataHoraFim    DateTime
   vagasTotais    Int
   agendamentos   Agendamento[]
+  cliente        Cliente       @relation(fields: [clienteId], references: [id])
+  clienteId      String
 }
 
 model Agendamento {

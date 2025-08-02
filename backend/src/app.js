@@ -12,6 +12,7 @@ const userRoutes = require('./routes/userRoutes');
 const clientRoutes = require('./routes/clientRoutes');
 const alunoRoutes = require('./routes/alunoRoutes');
 const assinaturaRoutes = require('./routes/assinaturaRoutes');
+const aulaRoutes = require('./routes/aulaRoutes');
 
 const app = express();
 app.use(cors());
@@ -26,5 +27,6 @@ app.use('/api/users', userRoutes);
 app.use('/api/client', clientRoutes);
 app.use('/api/alunos', alunoRoutes);
 app.use('/api/assinaturas', assinaturaRoutes);
+app.use('/api/aulas', aulaRoutes);
 
 module.exports = app;
