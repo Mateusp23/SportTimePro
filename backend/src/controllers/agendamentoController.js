@@ -212,3 +212,61 @@ exports.getAgendamentosCancelados = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.getHistoricoAluno = async (req, res) => {
+  const { userId, roles } = req.user;
+
+  if (!roles.includes('ALUNO')) {
+    return res.status(403).json({ message: 'Permissão negada' });
+  }
+
+  try {
+    const agora = new Date();
+
+    const agendamentos = await prisma.agendamento.findMany({
+      where: { alunoId: userId },
+      include: {
+        aula: {
+          include: {
+            professor: { select: { nome: true } },
+            unidade: { select: { nome: true } },
+            local: { select: { nome: true } }
+          }
+        }
+      },
+      orderBy: {
+        aula: { dataHoraInicio: 'desc' }
+      }
+    });
+
+    const futuras = [];
+    const concluidas = [];
+    const canceladas = [];
+
+    agendamentos.forEach(item => {
+      const aula = item.aula;
+      const info = {
+        id: item.id,
+        status: item.status,
+        modalidade: aula.modalidade,
+        dataHoraInicio: aula.dataHoraInicio,
+        dataHoraFim: aula.dataHoraFim,
+        professor: aula.professor.nome,
+        unidade: aula.unidade.nome,
+        local: aula.local.nome
+      };
+
+      if (item.status === 'CANCELADO') {
+        canceladas.push(info);
+      } else if (item.status === 'ATIVO' && new Date(aula.dataHoraFim) > agora) {
+        futuras.push(info);
+      } else {
+        concluidas.push(info);
+      }
+    });
+
+    res.json({ futuras, concluidas, canceladas });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
