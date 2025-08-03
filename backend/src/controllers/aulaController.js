@@ -251,11 +251,11 @@ exports.createAulasRecorrentes = async (req, res) => {
       professorId,
       unidadeId,
       localId,
-      diasSemana,       // ex: [1, 3] -> Segunda (1), Quarta (3)
-      dataInicio,       // ex: "2025-08-05"
-      dataFim,          // ex: "2025-09-05"
-      horaInicio,       // ex: "10:00"
-      horaFim,          // ex: "11:00"
+      diasSemana,
+      dataInicio,
+      dataFim,
+      horaInicio,
+      horaFim,
       vagasTotais
     } = req.body;
 
@@ -264,31 +264,48 @@ exports.createAulasRecorrentes = async (req, res) => {
     const fim = parseISO(dataFim);
 
     while (isBefore(dataAtual, addDays(fim, 1))) {
-      const diaSemana = dataAtual.getDay(); // 0=Domingo, 1=Segunda, ...
+      const diaSemana = dataAtual.getDay(); // 0=Domingo
       if (diasSemana.includes(diaSemana)) {
         const inicio = new Date(`${formatISO(dataAtual, { representation: 'date' })}T${horaInicio}`);
         const fimHora = new Date(`${formatISO(dataAtual, { representation: 'date' })}T${horaFim}`);
 
-        const aula = await prisma.aula.create({
-          data: {
-            modalidade,
+        // ✅ Verificar conflito: já existe aula nesse intervalo para o professor?
+        const conflito = await prisma.aula.findFirst({
+          where: {
             professorId,
-            unidadeId,
-            localId,
-            dataHoraInicio: inicio,
-            dataHoraFim: fimHora,
-            vagasTotais,
-            clienteId
+            clienteId,
+            OR: [
+              {
+                dataHoraInicio: { lte: fimHora },
+                dataHoraFim: { gte: inicio }
+              }
+            ]
           }
         });
 
-        aulasCriadas.push(aula);
+        if (!conflito) {
+          const aula = await prisma.aula.create({
+            data: {
+              modalidade,
+              professorId,
+              unidadeId,
+              localId,
+              dataHoraInicio: inicio,
+              dataHoraFim: fimHora,
+              vagasTotais,
+              clienteId
+            }
+          });
+          aulasCriadas.push(aula);
+        } else {
+          console.log(`⚠️ Conflito detectado em ${dataAtual}, aula não criada.`);
+        }
       }
       dataAtual = addDays(dataAtual, 1);
     }
 
     res.status(201).json({
-      message: 'Aulas recorrentes criadas com sucesso!',
+      message: 'Processo concluído',
       totalCriadas: aulasCriadas.length,
       aulas: aulasCriadas
     });
