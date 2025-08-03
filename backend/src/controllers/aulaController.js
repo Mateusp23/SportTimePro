@@ -82,7 +82,8 @@ exports.getAulas = async (req, res) => {
         professor: { select: { nome: true } },
         unidade: { select: { nome: true } },
         local: { select: { nome: true } }
-      }
+      },
+      orderBy: { dataHoraInicio: 'asc' }
     });
 
     res.json(aulas);

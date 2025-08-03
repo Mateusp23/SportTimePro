@@ -13,10 +13,11 @@ const clientRoutes = require('./routes/clientRoutes');
 const alunoRoutes = require('./routes/alunoRoutes');
 const assinaturaRoutes = require('./routes/assinaturaRoutes');
 const aulaRoutes = require('./routes/aulaRoutes');
+const agendamentoRoutes = require('./routes/agendamentoRoutes');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ strict: false }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/planos', planoRoutes);
@@ -28,5 +29,6 @@ app.use('/api/client', clientRoutes);
 app.use('/api/alunos', alunoRoutes);
 app.use('/api/assinaturas', assinaturaRoutes);
 app.use('/api/aulas', aulaRoutes);
+app.use('/api/agendamentos', agendamentoRoutes);
 
 module.exports = app;

@@ -87,7 +87,7 @@ model Local {
 
 model Aula {
   id             String        @id @default(uuid())
-  modalidade     Modalidade
+  modalidade     String
   professor      Usuario       @relation("ProfessorAulas", fields: [professorId], references: [id])
   professorId    String
   unidade        Unidade       @relation(fields: [unidadeId], references: [id])
@@ -97,19 +97,22 @@ model Aula {
   dataHoraInicio DateTime
   dataHoraFim    DateTime
   vagasTotais    Int
-  agendamentos   Agendamento[]
   cliente        Cliente       @relation(fields: [clienteId], references: [id])
   clienteId      String
+  agendamentos   Agendamento[]
+  criadoEm       DateTime      @default(now())
+  atualizadoEm   DateTime      @updatedAt
 }
 
 model Agendamento {
-  id       String            @id @default(uuid())
-  aluno    Usuario           @relation(fields: [alunoId], references: [id])
-  alunoId  String
-  aula     Aula              @relation(fields: [aulaId], references: [id])
-  aulaId   String
-  status   StatusAgendamento @default(CONFIRMADO)
-  criadoEm DateTime          @default(now())
+  id           String            @id @default(uuid())
+  aluno        Usuario           @relation(fields: [alunoId], references: [id])
+  alunoId      String
+  aula         Aula              @relation(fields: [aulaId], references: [id])
+  aulaId       String
+  status       StatusAgendamento @default(ATIVO)
+  criadoEm     DateTime          @default(now())
+  atualizadoEm DateTime          @updatedAt
 }
 
 model IndisponibilidadeProfessor {
@@ -141,8 +144,9 @@ enum StatusAssinatura {
 }
 
 enum StatusAgendamento {
-  CONFIRMADO
+  ATIVO
   CANCELADO
+  CONCLUIDO
 }
 
 enum TipoAtivacao {
