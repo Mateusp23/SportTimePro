@@ -4,7 +4,8 @@ import { useState } from "react";
 import api from "@/app/lib/api";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/app/store/authStore";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react"; // ícones modernos
+import { Mail, Lock } from "lucide-react";
+import InputField from "@/app/components/InputField";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -36,38 +37,30 @@ export default function LoginPage() {
         </h1>
         <p className="text-center text-gray-500">Entre para continuar</p>
 
-        {/* Campo Email */}
-        <div className="relative">
-          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="email"
-            placeholder="E-mail"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="pl-10 border border-gray-300 text-texts rounded-lg w-full p-3 focus:ring-2 focus:ring-primary focus:outline-none transition"
-            required
-          />
-        </div>
+        <InputField
+          type="email"
+          placeholder="E-mail"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          icon={<Mail size={18} />}
+          validate={(value) => {
+            if (!value.includes("@")) return "E-mail inválido";
+            return null;
+          }}
+        />
 
-        {/* Campo Senha com toggle */}
-        <div className="relative">
-          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type={mostrarSenha ? "text" : "password"}
-            placeholder="Senha"
-            value={senha}
-            onChange={(e) => setSenha(e.target.value)}
-            className="pl-10 pr-10 border border-gray-300 text-texts rounded-lg w-full p-3 focus:ring-2 focus:ring-primary focus:outline-none transition"
-            required
-          />
-          <button
-            type="button"
-            onClick={() => setMostrarSenha(!mostrarSenha)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-          >
-            {mostrarSenha ? <EyeOff size={18} /> : <Eye size={18} />}
-          </button>
-        </div>
+        <InputField
+          type="password"
+          placeholder="Senha"
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+          icon={<Lock size={18} />}
+          isPassword
+          validate={(value) => {
+            if (value.length < 6) return "Senha deve ter no mínimo 6 caracteres";
+            return null;
+          }}
+        />
 
         <button
           type="submit"
