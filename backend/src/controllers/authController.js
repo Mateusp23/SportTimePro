@@ -99,6 +99,18 @@ exports.registerAlunoViaInvite = async (req, res) => {
       return res.status(400).json({ message: 'Código de convite inválido ou expirado.' });
     }
 
+    // ✅ Verificar se o e-mail já está cadastrado para esse cliente
+    const usuarioExistente = await prisma.usuario.findFirst({
+      where: {
+        email,
+        clienteId: cliente.id
+      }
+    });
+
+    if (usuarioExistente) {
+      return res.status(400).json({ message: 'Este e-mail já está registrado neste cliente.' });
+    }
+
     const senhaHash = await bcrypt.hash(senha, 10);
 
     // Criar usuário com role ALUNO
