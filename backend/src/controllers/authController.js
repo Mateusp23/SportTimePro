@@ -1,6 +1,7 @@
 const prisma = require('../config/db');
 const bcrypt = require('bcrypt');
 const { generateToken } = require('../utils/jwt');
+const { enviarEmail } = require('../utils/emailService');
 
 exports.registerCliente = async (req, res) => {
   const { nomeCliente, nomeAdmin, email, senha, roles } = req.body;
@@ -33,6 +34,12 @@ exports.registerCliente = async (req, res) => {
 
 exports.login = async (req, res) => {
   const { email, senha } = req.body;
+  const usuario = await prisma.usuario.findUnique({ where: { email } });
+
+  if (!usuario.emailConfirmado) {
+    return res.status(403).json({ message: 'Confirme seu e-mail para acessar a conta.' });
+  }
+  
   try {
     const user = await prisma.usuario.findUnique({
       where: { email }
@@ -90,7 +97,6 @@ exports.registerAlunoViaInvite = async (req, res) => {
   const { nome, email, senha, inviteCode } = req.body;
 
   try {
-    // Verificar se existe cliente com esse inviteCode
     const cliente = await prisma.cliente.findFirst({
       where: { inviteCode }
     });
@@ -99,32 +105,71 @@ exports.registerAlunoViaInvite = async (req, res) => {
       return res.status(400).json({ message: 'Código de convite inválido ou expirado.' });
     }
 
-    // ✅ Verificar se o e-mail já está cadastrado para esse cliente
     const usuarioExistente = await prisma.usuario.findFirst({
-      where: {
-        email,
-        clienteId: cliente.id
-      }
+      where: { email, clienteId: cliente.id }
     });
-
     if (usuarioExistente) {
-      return res.status(400).json({ message: 'Este e-mail já está registrado neste cliente.' });
+      return res.status(400).json({ message: 'Este e-mail já está registrado.' });
     }
 
     const senhaHash = await bcrypt.hash(senha, 10);
+    const token = crypto.randomBytes(32).toString('hex');
+    const tokenExpira = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24h
 
-    // Criar usuário com role ALUNO
     const aluno = await prisma.usuario.create({
       data: {
         nome,
         email,
         senhaHash,
         roles: ['ALUNO'],
-        clienteId: cliente.id
+        clienteId: cliente.id,
+        tokenConfirmacao: token,
+        tokenExpiraEm: tokenExpira
       }
     });
 
-    res.status(201).json({ message: 'Aluno registrado com sucesso!', aluno });
+    const confirmLink = `${process.env.FRONTEND_URL}/confirm-email?token=${token}`;
+    await enviarEmail({
+      to: email,
+      subject: "Confirme seu e-mail - SportTimePro",
+      html: `
+        <p>Olá ${nome},</p>
+        <p>Clique no link abaixo para confirmar seu e-mail:</p>
+        <a href="${confirmLink}">${confirmLink}</a>
+      `
+    });
+
+    res.status(201).json({ message: 'Aluno registrado. Verifique seu e-mail para confirmar.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.confirmarEmail = async (req, res) => {
+  const { token } = req.query;
+
+  try {
+    const usuario = await prisma.usuario.findFirst({
+      where: {
+        tokenConfirmacao: token,
+        tokenExpiraEm: { gte: new Date() }
+      }
+    });
+
+    if (!usuario) {
+      return res.status(400).json({ message: 'Token inválido ou expirado.' });
+    }
+
+    await prisma.usuario.update({
+      where: { id: usuario.id },
+      data: {
+        emailConfirmado: true,
+        tokenConfirmacao: null,
+        tokenExpiraEm: null
+      }
+    });
+
+    res.json({ message: 'E-mail confirmado com sucesso!' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -4,6 +4,11 @@ const { StatusAgendamento } = require('@prisma/client');
 exports.agendarAula = async (req, res) => {
   const { aulaId } = req.body;
   const { userId, roles } = req.user;
+  const usuario = await prisma.usuario.findUnique({ where: { id: userId } });
+
+  if (!usuario.emailConfirmado) {
+    return res.status(403).json({ message: 'Confirme seu e-mail para agendar aulas.' });
+  }
 
   if (!roles.includes('ALUNO')) {
     return res.status(403).json({ message: 'Permissão negada' });

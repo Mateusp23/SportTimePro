@@ -37,6 +37,9 @@ model Usuario {
   agendamentos               Agendamento[]
   criadoEm                   DateTime                     @default(now())
   atualizadoEm               DateTime                     @updatedAt
+  emailConfirmado            Boolean                      @default(false)
+  tokenConfirmacao           String?
+  tokenExpiraEm              DateTime?
   Assinatura                 Assinatura[]
   IndisponibilidadeProfessor IndisponibilidadeProfessor[]
 }
