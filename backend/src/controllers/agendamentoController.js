@@ -270,3 +270,70 @@ exports.getHistoricoAluno = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.getAgendamentosPorAula = async (req, res) => {
+  const { aulaId } = req.params;
+  const { status } = req.query; // filtro opcional
+  const { clienteId, roles } = req.user;
+
+  if (!roles.includes('ADMIN') && !roles.includes('PROFESSOR')) {
+    return res.status(403).json({ message: 'Permissão negada' });
+  }
+
+  try {
+    const aula = await prisma.aula.findFirst({
+      where: {
+        id: aulaId,
+        clienteId
+      },
+      include: {
+        agendamentos: {
+          where: status ? { status } : {}, // aplica filtro se existir
+          include: {
+            aluno: {
+              select: {
+                id: true,
+                nome: true,
+                email: true
+              }
+            }
+          }
+        },
+        professor: { select: { nome: true } },
+        unidade: { select: { nome: true } },
+        local: { select: { nome: true } }
+      }
+    });
+
+    if (!aula) {
+      return res.status(404).json({ message: 'Aula não encontrada.' });
+    }
+
+    const agendamentos = aula.agendamentos.map(item => ({
+      id: item.id,
+      status: item.status,
+      dataAgendamento: item.criadoEm,
+      aluno: {
+        id: item.aluno.id,
+        nome: item.aluno.nome,
+        email: item.aluno.email
+      }
+    }));
+
+    res.json({
+      aula: {
+        id: aula.id,
+        modalidade: aula.modalidade,
+        dataHoraInicio: aula.dataHoraInicio,
+        dataHoraFim: aula.dataHoraFim,
+        professor: aula.professor.nome,
+        unidade: aula.unidade.nome,
+        local: aula.local.nome
+      },
+      totalAgendados: agendamentos.length,
+      agendamentos
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
