@@ -94,7 +94,11 @@ exports.getAulas = async (req, res) => {
 
 exports.getAulasDisponiveis = async (req, res) => {
   const { modalidade, data } = req.query;
-  const { clienteId } = req.user;
+  const { clienteId, roles } = req.user;
+
+  if (!roles.includes('ALUNO')) {
+    return res.status(403).json({ message: 'Permissão negada' });
+  }
 
   try {
     const inicioDia = new Date(`${data}T00:00:00`);
@@ -113,24 +117,28 @@ exports.getAulasDisponiveis = async (req, res) => {
         professor: { select: { id: true, nome: true } },
         unidade: { select: { nome: true } },
         local: { select: { nome: true } },
-        agendamentos: true
+        agendamentos: {
+          where: { status: 'ATIVO' } // conta apenas alunos ativos
+        }
       },
       orderBy: { dataHoraInicio: 'asc' }
     });
 
-    const aulasDisponiveis = aulas.map(aula => {
-      const vagasRestantes = aula.vagasTotais - aula.agendamentos.length;
-      return {
-        id: aula.id,
-        modalidade: aula.modalidade,
-        dataHoraInicio: aula.dataHoraInicio,
-        dataHoraFim: aula.dataHoraFim,
-        professor: aula.professor.nome,
-        unidade: aula.unidade.nome,
-        local: aula.local.nome,
-        vagasRestantes
-      };
-    }).filter(aula => aula.vagasRestantes > 0);
+    const aulasDisponiveis = aulas
+      .map(aula => {
+        const vagasRestantes = aula.vagasTotais - aula.agendamentos.length;
+        return {
+          id: aula.id,
+          modalidade: aula.modalidade,
+          dataHoraInicio: aula.dataHoraInicio,
+          dataHoraFim: aula.dataHoraFim,
+          professor: aula.professor.nome,
+          unidade: aula.unidade.nome,
+          local: aula.local.nome,
+          vagasRestantes
+        };
+      })
+      .filter(aula => vagasRestantes > 0);
 
     res.json(aulasDisponiveis);
   } catch (err) {
