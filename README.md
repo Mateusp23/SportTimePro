@@ -5,6 +5,8 @@ Sistema de Agendamento de Aulas Esportivas.
 📑 Sumário
 🔑 Autenticação
 
+📧 Confirmação de E-mail
+
 👤 Usuários
 
 🏢 Cliente/Convite
@@ -40,6 +42,29 @@ Editar
 }
 Resposta: retorna token JWT com roles do usuário.
 
+🔒 Validação: Usuário precisa ter emailConfirmado = true para fazer login.
+
+📧 Confirmação de E-mail
+Confirmar e-mail
+GET /api/auth/confirm-email?token=SEU_TOKEN
+
+Resposta: Confirma o e-mail do usuário.
+
+Token expira em 24 horas após o registro.
+
+Reenviar confirmação
+POST /api/auth/resend-confirmation
+
+Body:
+
+json
+Copiar
+Editar
+{
+  "email": "usuario@teste.com"
+}
+Resposta: Reenvia o link de confirmação de e-mail.
+
 👤 Usuários
 Registrar aluno via convite
 POST /api/auth/register-aluno-invite
@@ -55,6 +80,8 @@ Editar
   "senha": "123456",
   "inviteCode": "abc123"
 }
+✅ Envia e-mail automático para confirmação.
+
 Listar alunos do cliente
 GET /api/alunos
 
@@ -66,19 +93,15 @@ GET /api/client/invite-link
 
 Headers: Authorization: Bearer TOKEN_ADMIN
 
-Regenerar link de convite
+Regenerar link
 POST /api/client/invite-link/regenerate
-
-Headers: Authorization: Bearer TOKEN_ADMIN
 
 Desativar link
 POST /api/client/invite-link/disable
 
-Headers: Authorization: Bearer TOKEN_ADMIN
-
 📦 Planos
 CRUD Planos
-GET /api/planos → listar
+GET /api/planos
 
 POST /api/planos
 
@@ -133,7 +156,7 @@ POST /api/aulas/recorrentes
 Listar aulas
 GET /api/aulas
 
-Listar aulas disponíveis para alunos
+Listar aulas disponíveis
 GET /api/aulas/disponiveis?modalidade=FUTEVOLEI&data=2025-08-04
 
 📅 Agendamentos
@@ -148,10 +171,12 @@ Editar
 {
   "aulaId": "uuid"
 }
+🔒 Somente usuários com emailConfirmado = true podem agendar.
+
 Cancelar agendamento
 PUT /api/agendamentos/:agendamentoId/cancelar
 
-Listar agendamentos cancelados
+Listar cancelados
 GET /api/agendamentos/:aulaId/cancelados
 
 Listar alunos de uma aula
@@ -167,18 +192,27 @@ Headers: Authorization: Bearer TOKEN_ALUNO
 ⚙️ Cron Jobs
 Rodam automaticamente:
 
-Atualizam status de agendamentos para CONCLUIDO quando a aula finaliza.
+Atualizam agendamentos para CONCLUIDO quando a aula termina.
 
-Roda a cada hora (0 * * * *).
+Executados a cada hora (0 * * * *).
 
 📧 Notificações
-Quando uma aula é cancelada, todos os alunos ativos recebem um e-mail automático.
+Ao cancelar uma aula:
 
+Todos os alunos ativos recebem um e-mail automático.
+
+Sistema usa Nodemailer com SMTP configurado no .env:
+
+env
+Copiar
+Editar
+EMAIL_USER=seuemail@gmail.com
+EMAIL_PASS=sua_senha
 🔒 Middleware
-ADMIN: Acesso administrativo.
+ADMIN: Permissão total.
 
-PROFESSOR: Acesso restrito a professores.
+PROFESSOR: Gerenciamento de aulas e agendamentos.
 
-ALUNO: Acesso restrito a alunos.
+ALUNO: Agendamento e histórico.
 
-Algumas rotas aceitam múltiplos papéis (ex.: Admin e Professor).
+Algumas rotas aceitam múltiplos papéis.
