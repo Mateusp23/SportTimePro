@@ -92,6 +92,97 @@ exports.getAulas = async (req, res) => {
   }
 };
 
+exports.updateAula = async (req, res) => {
+  const { aulaId } = req.params;
+  const { clienteId, roles } = req.user;
+
+  if (!roles.includes('ADMIN') && !roles.includes('PROFESSOR')) {
+    return res.status(403).json({ message: 'Permissão negada' });
+  }
+
+  try {
+    const { modalidade, professorId, unidadeId, localId, dataHoraInicio, dataHoraFim, vagasTotais } = req.body;
+
+    // Verificar se a aula existe e pertence ao cliente
+    const aulaExistente = await prisma.aula.findFirst({
+      where: { id: aulaId, clienteId }
+    });
+
+    if (!aulaExistente) {
+      return res.status(404).json({ message: 'Aula não encontrada.' });
+    }
+
+    // Atualizar dados da aula
+    const aulaAtualizada = await prisma.aula.update({
+      where: { id: aulaId },
+      data: {
+        modalidade: modalidade || aulaExistente.modalidade,
+        professorId: professorId || aulaExistente.professorId,
+        unidadeId: unidadeId || aulaExistente.unidadeId,
+        localId: localId || aulaExistente.localId,
+        dataHoraInicio: dataHoraInicio ? new Date(dataHoraInicio) : aulaExistente.dataHoraInicio,
+        dataHoraFim: dataHoraFim ? new Date(dataHoraFim) : aulaExistente.dataHoraFim,
+        vagasTotais: vagasTotais || aulaExistente.vagasTotais
+      },
+      include: {
+        professor: { select: { nome: true } },
+        unidade: { select: { nome: true } },
+        local: { select: { nome: true } }
+      }
+    });
+
+    res.json({ message: 'Aula atualizada com sucesso', aulaAtualizada });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.deleteAula = async (req, res) => {
+  const { aulaId } = req.params;
+  const { clienteId, roles } = req.user;
+
+  if (!roles.includes('ADMIN') && !roles.includes('PROFESSOR')) {
+    return res.status(403).json({ message: 'Permissão negada' });
+  }
+
+  try {
+    // Verificar se aula existe
+    const aula = await prisma.aula.findFirst({
+      where: { id: aulaId, clienteId },
+      include: {
+        agendamentos: {
+          where: { status: 'ATIVO' },
+          include: { aluno: { select: { id: true, nome: true, email: true } } }
+        }
+      }
+    });
+
+    if (!aula) {
+      return res.status(404).json({ message: 'Aula não encontrada.' });
+    }
+
+    // Cancelar todos os agendamentos ativos
+    if (aula.agendamentos.length > 0) {
+      await prisma.agendamento.updateMany({
+        where: { aulaId, status: 'ATIVO' },
+        data: { status: 'CANCELADO' }
+      });
+
+      // 🚩 Aqui podemos futuramente disparar emails/notificações
+      console.log(`🔔 Notificar ${aula.agendamentos.length} alunos sobre o cancelamento da aula.`);
+    }
+
+    // Excluir aula
+    await prisma.aula.delete({
+      where: { id: aulaId }
+    });
+
+    res.json({ message: 'Aula excluída com sucesso e agendamentos cancelados.' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 exports.getAulasDisponiveis = async (req, res) => {
   const { modalidade, data } = req.query;
   const { clienteId, roles } = req.user;
