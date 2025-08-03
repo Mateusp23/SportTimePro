@@ -1,10 +1,11 @@
 @import "tailwindcss";
 
-:root {
+@theme {
   /* Cores base (modo claro) */
   --background: #f5f5f5;
   --foreground: #212121;
 
+  --color-texts: #000;
   --color-primary: #0066FF;
   --color-secondary: #00C853;
   --color-error: #FF3D00;
@@ -17,7 +18,7 @@
 }
 
 @media (prefers-color-scheme: dark) {
-  :root {
+  @theme {
     --background: #121212;
     --foreground: #e5e5e5;
 
