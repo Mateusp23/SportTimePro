@@ -91,3 +91,49 @@ exports.getAulas = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.getAulasDisponiveis = async (req, res) => {
+  const { modalidade, data } = req.query;
+  const { clienteId } = req.user;
+
+  try {
+    const inicioDia = new Date(`${data}T00:00:00`);
+    const fimDia = new Date(`${data}T23:59:59`);
+
+    const aulas = await prisma.aula.findMany({
+      where: {
+        modalidade,
+        clienteId,
+        dataHoraInicio: {
+          gte: inicioDia,
+          lte: fimDia
+        }
+      },
+      include: {
+        professor: { select: { id: true, nome: true } },
+        unidade: { select: { nome: true } },
+        local: { select: { nome: true } },
+        agendamentos: true
+      },
+      orderBy: { dataHoraInicio: 'asc' }
+    });
+
+    const aulasDisponiveis = aulas.map(aula => {
+      const vagasRestantes = aula.vagasTotais - aula.agendamentos.length;
+      return {
+        id: aula.id,
+        modalidade: aula.modalidade,
+        dataHoraInicio: aula.dataHoraInicio,
+        dataHoraFim: aula.dataHoraFim,
+        professor: aula.professor.nome,
+        unidade: aula.unidade.nome,
+        local: aula.local.nome,
+        vagasRestantes
+      };
+    }).filter(aula => aula.vagasRestantes > 0);
+
+    res.json(aulasDisponiveis);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};

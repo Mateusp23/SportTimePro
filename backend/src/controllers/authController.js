@@ -85,3 +85,35 @@ exports.registerAluno = async (req, res) => {
     return res.status(500).json({ message: err.message });
   }
 };
+
+exports.registerAlunoViaInvite = async (req, res) => {
+  const { nome, email, senha, inviteCode } = req.body;
+
+  try {
+    // Verificar se existe cliente com esse inviteCode
+    const cliente = await prisma.cliente.findFirst({
+      where: { inviteCode }
+    });
+
+    if (!cliente) {
+      return res.status(400).json({ message: 'Código de convite inválido ou expirado.' });
+    }
+
+    const senhaHash = await bcrypt.hash(senha, 10);
+
+    // Criar usuário com role ALUNO
+    const aluno = await prisma.usuario.create({
+      data: {
+        nome,
+        email,
+        senhaHash,
+        roles: ['ALUNO'],
+        clienteId: cliente.id
+      }
+    });
+
+    res.status(201).json({ message: 'Aluno registrado com sucesso!', aluno });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
