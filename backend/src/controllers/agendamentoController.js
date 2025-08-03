@@ -2,55 +2,57 @@ const prisma = require('../config/db');
 const { StatusAgendamento } = require('@prisma/client');
 
 exports.agendarAula = async (req, res) => {
-  const { aulaId, alunoId } = req.body;
-  const { userId, clienteId, roles } = req.user;
+  const { aulaId } = req.body;
+  const { userId, roles } = req.user;
 
-  const idParaAgendar = roles.includes('ALUNO') ? userId : alunoId;
-
-  if (!roles.includes('ALUNO') && !roles.includes('ADMIN') && !roles.includes('PROFESSOR')) {
+  if (!roles.includes('ALUNO')) {
     return res.status(403).json({ message: 'Permissão negada' });
   }
 
-  if (!idParaAgendar) {
-    return res.status(400).json({ message: 'AlunoId é obrigatório quando não é um aluno agendando para si mesmo.' });
-  }
-
   try {
-    // Verificar se a aula existe
-    const aula = await prisma.aula.findFirst({
-      where: { id: aulaId, clienteId },
+    const agora = new Date();
+
+    // Verificar se aula existe
+    const aula = await prisma.aula.findUnique({
+      where: { id: aulaId },
       include: {
-        agendamentos: true
+        agendamentos: {
+          where: { status: 'ATIVO' }
+        }
       }
     });
-    if (!aula) return res.status(404).json({ message: 'Aula não encontrada' });
 
-    // Verificar se o aluno já agendou essa aula
-    const agendamentoExistente = await prisma.agendamento.findFirst({
-      where: { alunoId: userId, aulaId }
+    if (!aula) {
+      return res.status(404).json({ message: 'Aula não encontrada.' });
+    }
+
+    // ✅ Aula já começou
+    if (new Date(aula.dataHoraInicio) <= agora) {
+      return res.status(400).json({ message: 'Não é possível agendar para uma aula que já começou.' });
+    }
+
+    // ✅ Aula já finalizou
+    if (new Date(aula.dataHoraFim) <= agora) {
+      return res.status(400).json({ message: 'Essa aula já foi finalizada.' });
+    }
+
+    // ✅ Validação: aluno já agendado
+    const jaAgendado = await prisma.agendamento.findFirst({
+      where: {
+        alunoId: userId,
+        aulaId,
+        status: 'ATIVO'
+      }
     });
-    if (agendamentoExistente) {
-      return res.status(400).json({ message: 'Você já está agendado nesta aula' });
+
+    if (jaAgendado) {
+      return res.status(400).json({ message: 'Você já está agendado para essa aula.' });
     }
 
     // Verificar vagas
-    const vagasOcupadas = await prisma.agendamento.count({
-      where: { aulaId, status: 'ATIVO' }
-    });
-    if (vagasOcupadas >= aula.vagasTotais) {
-      return res.status(400).json({ message: 'A aula está lotada' });
-    }
-
-    // Verificar plano ativo
-    const assinaturaAtiva = await prisma.assinatura.findFirst({
-      where: {
-        alunoId: userId,
-        status: 'ATIVO',
-        dataFim: { gte: new Date() }
-      }
-    });
-    if (!assinaturaAtiva) {
-      return res.status(403).json({ message: 'Plano inativo ou vencido. Não é possível agendar.' });
+    const vagasRestantes = aula.vagasTotais - aula.agendamentos.length;
+    if (vagasRestantes <= 0) {
+      return res.status(400).json({ message: 'Não há vagas disponíveis para essa aula.' });
     }
 
     // Criar agendamento
@@ -59,26 +61,10 @@ exports.agendarAula = async (req, res) => {
         alunoId: userId,
         aulaId,
         status: 'ATIVO'
-      },
-      include: {
-        aluno: {
-          select: {
-            nome: true,
-            email: true
-          }
-        },
-        aula: {
-          select: {
-            modalidade: true,
-            dataHoraInicio: true,
-            dataHoraFim: true,
-            professor: { select: { nome: true } }
-          }
-        }
       }
     });
 
-    res.json({ message: 'Agendamento realizado com sucesso', agendamento });
+    res.status(201).json({ message: 'Agendamento realizado com sucesso!', agendamento });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
