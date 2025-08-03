@@ -1,4 +1,5 @@
 const prisma = require('../config/db');
+const { addDays, isBefore, parseISO, formatISO } = require('date-fns');
 
 exports.createAula = async (req, res) => {
   const { modalidade, professorId, unidadeId, localId, dataHoraInicio, dataHoraFim, vagasTotais } = req.body;
@@ -232,6 +233,65 @@ exports.getAulasDisponiveis = async (req, res) => {
       .filter(aula => vagasRestantes > 0);
 
     res.json(aulasDisponiveis);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.createAulasRecorrentes = async (req, res) => {
+  const { clienteId, roles } = req.user;
+
+  if (!roles.includes('ADMIN') && !roles.includes('PROFESSOR')) {
+    return res.status(403).json({ message: 'Permissão negada' });
+  }
+
+  try {
+    const {
+      modalidade,
+      professorId,
+      unidadeId,
+      localId,
+      diasSemana,       // ex: [1, 3] -> Segunda (1), Quarta (3)
+      dataInicio,       // ex: "2025-08-05"
+      dataFim,          // ex: "2025-09-05"
+      horaInicio,       // ex: "10:00"
+      horaFim,          // ex: "11:00"
+      vagasTotais
+    } = req.body;
+
+    const aulasCriadas = [];
+    let dataAtual = parseISO(dataInicio);
+    const fim = parseISO(dataFim);
+
+    while (isBefore(dataAtual, addDays(fim, 1))) {
+      const diaSemana = dataAtual.getDay(); // 0=Domingo, 1=Segunda, ...
+      if (diasSemana.includes(diaSemana)) {
+        const inicio = new Date(`${formatISO(dataAtual, { representation: 'date' })}T${horaInicio}`);
+        const fimHora = new Date(`${formatISO(dataAtual, { representation: 'date' })}T${horaFim}`);
+
+        const aula = await prisma.aula.create({
+          data: {
+            modalidade,
+            professorId,
+            unidadeId,
+            localId,
+            dataHoraInicio: inicio,
+            dataHoraFim: fimHora,
+            vagasTotais,
+            clienteId
+          }
+        });
+
+        aulasCriadas.push(aula);
+      }
+      dataAtual = addDays(dataAtual, 1);
+    }
+
+    res.status(201).json({
+      message: 'Aulas recorrentes criadas com sucesso!',
+      totalCriadas: aulasCriadas.length,
+      aulas: aulasCriadas
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

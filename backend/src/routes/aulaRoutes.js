@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { createAula, getAulas, updateAula, deleteAula, getAulasDisponiveis } = require('../controllers/aulaController');
+const { createAula, getAulas, updateAula, deleteAula, getAulasDisponiveis, createAulasRecorrentes } = require('../controllers/aulaController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
 router.post('/', authMiddleware(['ADMIN', 'PROFESSOR']), createAula);
@@ -13,6 +13,10 @@ router.put('/:aulaId',
 router.delete('/:aulaId',
   authMiddleware(['ADMIN', 'PROFESSOR']),
   deleteAula
+);
+router.post('/recorrentes',
+  authMiddleware(['ADMIN', 'PROFESSOR']),
+  createAulasRecorrentes
 );
 
 module.exports = router;
