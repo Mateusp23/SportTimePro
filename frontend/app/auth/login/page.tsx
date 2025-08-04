@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "@/app/lib/api";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/app/store/authStore";
@@ -10,19 +10,46 @@ import InputField from "@/app/components/InputField";
 export default function LoginPage() {
   const router = useRouter();
   const setToken = useAuthStore((state) => state.setToken);
+  const token = useAuthStore((state) => state.token);
 
   const [email, setEmail] = useState("");
   const [senha, setSenha] = useState("");
-  const [mostrarSenha, setMostrarSenha] = useState(false);
+  const [showResend, setShowResend] = useState(false);
+
+  useEffect(() => {
+    // Se já existe token, redireciona direto
+    if (token) {
+      router.push("/dashboard");
+    }
+  }, [token, router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       const res = await api.post("/auth/login", { email, senha });
+
+      // 🔑 Salva token no LocalStorage e na store
+      localStorage.setItem("token", res.data.token);
       setToken(res.data.token);
+
       router.push("/dashboard");
-    } catch (err) {
-      alert("Credenciais inválidas");
+    } catch (err: any) {
+      const message = err.response?.data?.message || "Credenciais inválidas";
+      alert(message);
+
+      if (message.includes("Confirme seu e-mail")) {
+        setShowResend(true);
+      }
+    }
+  };
+
+  const handleResend = async () => {
+    try {
+      await api.post("/auth/resend-confirmation", { email });
+      alert("Novo link de confirmação enviado para o seu e-mail.");
+      setShowResend(false);
+    } catch (err: any) {
+      alert(err.response?.data?.message || "Erro ao reenviar link");
     }
   };
 
@@ -43,10 +70,7 @@ export default function LoginPage() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           icon={<Mail size={18} />}
-          validate={(value) => {
-            if (!value.includes("@")) return "E-mail inválido";
-            return null;
-          }}
+          validate={(value) => (!value.includes("@") ? "E-mail inválido" : null)}
         />
 
         <InputField
@@ -56,10 +80,9 @@ export default function LoginPage() {
           onChange={(e) => setSenha(e.target.value)}
           icon={<Lock size={18} />}
           isPassword
-          validate={(value) => {
-            if (value.length < 6) return "Senha deve ter no mínimo 6 caracteres";
-            return null;
-          }}
+          validate={(value) =>
+            value.length < 6 ? "Senha deve ter no mínimo 6 caracteres" : null
+          }
         />
 
         <button
@@ -69,14 +92,29 @@ export default function LoginPage() {
           Entrar
         </button>
 
-        <p className="text-center mt-3 text-sm text-gray-600">
+        {showResend && (
+          <div className="text-center mt-3">
+            <p className="text-sm text-gray-600">
+              Não recebeu o e-mail de confirmação?
+            </p>
+            <button
+              type="button"
+              onClick={handleResend}
+              className="text-primary underline font-medium mt-1"
+            >
+              Reenviar link
+            </button>
+          </div>
+        )}
+
+        <p className="text-center mt-2 text-sm text-texts">
           Não tem conta?{" "}
-          <a
-            href="/auth/register"
-            className="text-primary font-medium hover:underline"
-          >
-            Registrar
-          </a>
+          <a href="/auth/register" className="text-primary underline">Registrar</a>
+        </p>
+
+        <p className="text-center mt-2 text-sm text-texts">
+          É um professor ou dono de academia?{" "}
+          <a href="/auth/register-client" className="text-secondary underline">Registrar Academia</a>
         </p>
       </form>
     </div>
