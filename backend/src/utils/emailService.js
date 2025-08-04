@@ -1,29 +1,27 @@
 const nodemailer = require('nodemailer');
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail', // Se for usar Gmail
+  host: process.env.SMTP_HOST, // Ex: smtp.gmail.com
+  port: process.env.SMTP_PORT, // Ex: 587
+  secure: false, // true para 465
   auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+  },
 });
 
-/**
- * Função genérica para enviar e-mails
- */
-exports.enviarEmail = async ({ to, subject, html }) => {
-  const mailOptions = {
-    from: `"SportTimePro" <${process.env.EMAIL_USER}>`,
-    to,
-    subject,
-    html
-  };
+exports.sendConfirmationEmail = async (to, token) => {
+  const url = `${process.env.FRONTEND_URL}/auth/confirm-email?token=${token}`;
 
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log(`📧 E-mail enviado para ${to}: ${info.messageId}`);
-  } catch (error) {
-    console.error(`❌ Erro ao enviar e-mail para ${to}:`, error);
-    throw new Error('Falha ao enviar e-mail.');
-  }
+  await transporter.sendMail({
+    from: `"SportTimePro" <${process.env.SMTP_USER}>`,
+    to,
+    subject: 'Confirme seu e-mail',
+    html: `
+      <h3>Bem-vindo ao SportTimePro!</h3>
+      <p>Por favor, confirme seu e-mail clicando no botão abaixo:</p>
+      <a href="${url}" style="display:inline-block;padding:10px 20px;background-color:#0066FF;color:white;text-decoration:none;border-radius:5px;">Confirmar E-mail</a>
+      <p>Ou copie e cole este link no navegador: ${url}</p>
+    `,
+  });
 };
