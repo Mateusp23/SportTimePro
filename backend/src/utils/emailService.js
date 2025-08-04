@@ -10,18 +10,18 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-exports.sendConfirmationEmail = async (to, token) => {
-  const url = `${process.env.FRONTEND_URL}/auth/confirm-email?token=${token}`;
+exports.sendConfirmationEmail = async (email, token) => {
+  const confirmUrl = `${process.env.FRONTEND_URL}/api/auth/confirm-email?token=${token}`;;
 
   await transporter.sendMail({
     from: `"SportTimePro" <${process.env.SMTP_USER}>`,
-    to,
+    to: email,
     subject: 'Confirme seu e-mail',
     html: `
       <h3>Bem-vindo ao SportTimePro!</h3>
       <p>Por favor, confirme seu e-mail clicando no botão abaixo:</p>
-      <a href="${url}" style="display:inline-block;padding:10px 20px;background-color:#0066FF;color:white;text-decoration:none;border-radius:5px;">Confirmar E-mail</a>
-      <p>Ou copie e cole este link no navegador: ${url}</p>
+      <a href="${confirmUrl}" style="display:inline-block;padding:10px 20px;background-color:#0066FF;color:white;text-decoration:none;border-radius:5px;">Confirmar E-mail</a>
+      <p>Ou copie e cole este link no navegador: ${confirmUrl}</p>
     `,
   });
 };

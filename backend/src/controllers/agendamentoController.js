@@ -1,5 +1,5 @@
 const prisma = require('../config/db');
-const { StatusAgendamento } = require('@prisma/client');
+const { StatusAgendamento } = require('../../generated/prisma');
 
 exports.agendarAula = async (req, res) => {
   const { aulaId } = req.body;

@@ -5,7 +5,6 @@ const emailService = require('../utils/emailService');
 
 exports.registerCliente = async (req, res) => {
   const { nomeCliente, nomeAdmin, email, senha, roles } = req.body;
-
   try {
     const hash = await bcrypt.hash(senha, 10);
 
@@ -25,21 +24,18 @@ exports.registerCliente = async (req, res) => {
       include: { usuarios: true }
     });
 
-    // Pega o usuário admin criado
-    const usuario = cliente.usuarios[0];
-
-    // 🔑 Gera token JWT para confirmação de e-mail
+    // ✅ Gerar token JWT
     const token = jwt.sign(
-      { userId: usuario.id },
+      { userId: cliente.usuarios[0].id },
       process.env.JWT_SECRET,
-      { expiresIn: '1d' } // Token válido por 1 dia
+      { expiresIn: '1h' }
     );
 
-    // 📧 Envia o e-mail de confirmação
+    // ✅ Enviar e-mail com link de confirmação
     await emailService.sendConfirmationEmail(email, token);
 
     return res.json({
-      message: 'Cliente e admin criados com sucesso. Confirme seu e-mail para acessar a conta.',
+      message: 'Cliente e admin criados com sucesso. Confirme seu e-mail para ativar a conta.',
       cliente
     });
   } catch (err) {
@@ -164,28 +160,53 @@ exports.confirmarEmail = async (req, res) => {
   const { token } = req.query;
 
   try {
-    // Decodifica o token
+    // ✅ Verifica JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Busca usuário pelo ID
-    const usuario = await prisma.usuario.findUnique({
-      where: { id: decoded.userId }
-    });
-
-    if (!usuario) {
-      return res.status(400).json({ message: 'Usuário não encontrado.' });
-    }
-
-    // Atualiza campo emailConfirmado
+    // ✅ Atualiza usuário como confirmado
     await prisma.usuario.update({
-      where: { id: usuario.id },
+      where: { id: decoded.userId },
       data: {
         emailConfirmado: true
       }
     });
 
-    return res.json({ message: 'E-mail confirmado com sucesso!' });
+    res.json({ message: 'E-mail confirmado com sucesso!' });
   } catch (error) {
-    return res.status(400).json({ message: 'Token inválido ou expirado.' });
+    res.status(400).json({ message: 'Token inválido ou expirado.' });
+  }
+};
+
+exports.resendConfirmationEmail = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // Verifica se usuário existe
+    const usuario = await prisma.usuario.findUnique({
+      where: { email },
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ message: 'Usuário não encontrado.' });
+    }
+
+    // Se já está confirmado, não reenvia
+    if (usuario.emailConfirmado) {
+      return res.status(400).json({ message: 'E-mail já confirmado.' });
+    }
+
+    // Gera novo token
+    const token = jwt.sign(
+      { userId: usuario.id },
+      process.env.JWT_SECRET,
+      { expiresIn: '1h' }
+    );
+
+    // Envia novo e-mail
+    await emailService.sendConfirmationEmail(email, token);
+
+    res.json({ message: 'Novo link de confirmação enviado para o e-mail.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
