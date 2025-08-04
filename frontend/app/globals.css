@@ -8,7 +8,7 @@
   --color-texts: #000;
   --color-primary: #0066FF;
   --color-secondary: #00C853;
-  --color-error: #FF3D00;
+  --color-error: #FF0000;
 
   --border-radius: 0.5rem;
 
@@ -29,8 +29,7 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  color: var(--color-texts);
   font-family: var(--font-sans);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
