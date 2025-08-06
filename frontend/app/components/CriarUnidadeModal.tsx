@@ -6,9 +6,10 @@ import api from "@/app/lib/api";
 interface CriarUnidadeModalProps {
   onClose: () => void;
   onCreated: (unidade: any) => void;
+  createUnidade: (data: { nome: string; cidade: string }) => Promise<any>;
 }
 
-export default function CriarUnidadeModal({ onClose, onCreated }: CriarUnidadeModalProps) {
+export default function CriarUnidadeModal({ onClose, onCreated, createUnidade }: CriarUnidadeModalProps) {
   const [nome, setNome] = useState("");
   const [cidade, setCidade] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -21,12 +22,12 @@ export default function CriarUnidadeModal({ onClose, onCreated }: CriarUnidadeMo
 
     setIsLoading(true);
     try {
-      const response = await api.post("/unidades", {
+      const novaUnidade = await createUnidade({
         nome: nome.trim(),
         cidade: cidade.trim()
       });
 
-      onCreated(response.data);
+      onCreated(novaUnidade);
       onClose();
     } catch (error) {
       alert("Erro ao criar unidade. Tente novamente.");

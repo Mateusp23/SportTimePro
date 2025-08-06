@@ -58,6 +58,7 @@ export const useUnidadesLocais = (): UseUnidadesLocaisReturn => {
       const response = await api.post("/unidades", data);
       const novaUnidade = response.data;
       
+      // Atualizar o estado local
       setUnidades(prev => [...prev, novaUnidade]);
       return novaUnidade;
     } catch (err) {
@@ -70,6 +71,7 @@ export const useUnidadesLocais = (): UseUnidadesLocaisReturn => {
       const response = await api.post("/locais", data);
       const novoLocal = response.data;
       
+      // Atualizar o estado local
       setLocais(prev => [...prev, novoLocal]);
       return novoLocal;
     } catch (err) {

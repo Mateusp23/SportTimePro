@@ -1,18 +1,26 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "@/app/lib/api";
 
 interface CriarLocalModalProps {
   onClose: () => void;
   onCreated: (local: any) => void;
   unidades: any[];
+  createLocal: (data: { nome: string; unidadeId: string }) => Promise<any>;
 }
 
-export default function CriarLocalModal({ onClose, onCreated, unidades }: CriarLocalModalProps) {
+export default function CriarLocalModal({ onClose, onCreated, unidades, createLocal }: CriarLocalModalProps) {
   const [nome, setNome] = useState("");
   const [unidadeId, setUnidadeId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Selecionar automaticamente se há apenas uma unidade
+  useEffect(() => {
+    if (unidades.length === 1 && !unidadeId) {
+      setUnidadeId(unidades[0].id);
+    }
+  }, [unidades, unidadeId]);
 
   const handleCreate = async () => {
     if (!nome.trim() || !unidadeId) {
@@ -22,12 +30,12 @@ export default function CriarLocalModal({ onClose, onCreated, unidades }: CriarL
 
     setIsLoading(true);
     try {
-      const response = await api.post("/locais", {
+      const novoLocal = await createLocal({
         nome: nome.trim(),
         unidadeId
       });
 
-      onCreated(response.data);
+      onCreated(novoLocal);
       onClose();
     } catch (error) {
       alert("Erro ao criar local. Tente novamente.");
@@ -75,18 +83,24 @@ export default function CriarLocalModal({ onClose, onCreated, unidades }: CriarL
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Unidade *
               </label>
-              <select
-                value={unidadeId}
-                onChange={(e) => setUnidadeId(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
-              >
-                <option value="">Selecione uma unidade</option>
-                {unidades.map((unidade) => (
-                  <option key={unidade.id} value={unidade.id}>
-                    {unidade.nome} - {unidade.cidade}
-                  </option>
-                ))}
-              </select>
+              {unidades.length === 0 ? (
+                <div className="w-full px-3 py-2 border border-red-300 bg-red-50 rounded-lg text-red-700 text-sm">
+                  Nenhuma unidade disponível. Crie uma unidade primeiro.
+                </div>
+              ) : (
+                <select
+                  value={unidadeId}
+                  onChange={(e) => setUnidadeId(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                >
+                  <option value="">Selecione uma unidade</option>
+                  {unidades.map((unidade) => (
+                    <option key={unidade.id} value={unidade.id}>
+                      {unidade.nome} - {unidade.cidade}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
         </div>
@@ -102,7 +116,7 @@ export default function CriarLocalModal({ onClose, onCreated, unidades }: CriarL
           </button>
           <button
             onClick={handleCreate}
-            disabled={isLoading}
+            disabled={isLoading || unidades.length === 0}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 font-medium disabled:opacity-50 flex items-center gap-2"
           >
             {isLoading ? (

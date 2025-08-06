@@ -293,6 +293,7 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
         <CriarUnidadeModal
           onClose={() => setShowUnidadeModal(false)}
           onCreated={handleUnidadeCreated}
+          createUnidade={createUnidade}
         />
       )}
 
@@ -301,6 +302,7 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
           onClose={() => setShowLocalModal(false)}
           onCreated={handleLocalCreated}
           unidades={unidades}
+          createLocal={createLocal}
         />
       )}
     </div>
