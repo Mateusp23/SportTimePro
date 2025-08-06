@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import api from "@/app/lib/api";
 import NovaAulaModal from "@/app/components/NovaAulaModel";
 
+
 export default function AulasPage() {
   const [aulas, setAulas] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -23,12 +24,16 @@ export default function AulasPage() {
     fetchAulas();
   };
 
+  const handleOpenModal = () => {
+    setShowModal(true);
+  };
+
   return (
     <div className="bg-white p-6 rounded shadow">
       <h2 className="text-2xl font-heading font-bold mb-4">Gerenciar Aulas</h2>
       <button
         className="bg-primary text-white px-4 py-2 rounded mb-4"
-        onClick={() => setShowModal(true)}
+        onClick={handleOpenModal}
       >
         + Nova Aula
       </button>
@@ -39,6 +44,8 @@ export default function AulasPage() {
           onCreated={fetchAulas}
         />
       )}
+
+
 
       <table className="w-full border">
         <thead>

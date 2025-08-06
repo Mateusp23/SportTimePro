@@ -1,18 +1,49 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import api from "@/app/lib/api";
+import CriarUnidadeModal from "./CriarUnidadeModal";
+import CriarLocalModal from "./CriarLocalModal";
+import { useUnidadesLocais } from "@/app/hooks/useUnidadesLocais";
 
 export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [modalidade, setModalidade] = useState("");
   const [dataHoraInicio, setDataHoraInicio] = useState("");
   const [dataHoraFim, setDataHoraFim] = useState("");
   const [vagasTotais, setVagasTotais] = useState(0);
+  const [unidadeId, setUnidadeId] = useState("");
+  const [localId, setLocalId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showUnidadeModal, setShowUnidadeModal] = useState(false);
+  const [showLocalModal, setShowLocalModal] = useState(false);
+
+  const { unidades, locais, isLoading: isLoadingData, createUnidade, createLocal } = useUnidadesLocais();
+
+  useEffect(() => {
+    // Selecionar primeira unidade e local por padrão quando dados carregarem
+    if (unidades.length > 0 && !unidadeId) {
+      setUnidadeId(unidades[0].id);
+    }
+    if (locais.length > 0 && !localId) {
+      setLocalId(locais[0].id);
+    }
+  }, [unidades, locais, unidadeId, localId]);
 
   const handleCreate = async () => {
+    // Validação básica dos campos
     if (!modalidade || !dataHoraInicio || !dataHoraFim || vagasTotais <= 0) {
-      alert("Por favor, preencha todos os campos corretamente");
+      alert("Por favor, preencha todos os campos obrigatórios");
+      return;
+    }
+
+    // Validação de unidade e local
+    if (!unidadeId) {
+      alert("Por favor, selecione uma unidade ou crie uma nova");
+      return;
+    }
+
+    if (!localId) {
+      alert("Por favor, selecione um local ou crie um novo");
       return;
     }
 
@@ -23,6 +54,8 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
         dataHoraInicio,
         dataHoraFim,
         vagasTotais,
+        unidadeId,
+        localId,
       });
       onCreated();
       onClose();
@@ -31,6 +64,16 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleUnidadeCreated = (novaUnidade: any) => {
+    setUnidadeId(novaUnidade.id);
+    setShowUnidadeModal(false);
+  };
+
+  const handleLocalCreated = (novoLocal: any) => {
+    setLocalId(novoLocal.id);
+    setShowLocalModal(false);
   };
 
   return (
@@ -54,62 +97,161 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
 
         {/* Content */}
         <div className="px-8 py-6">
-          <div className="space-y-6">
-            {/* Modalidade */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Modalidade *
-              </label>
-              <input
-                type="text"
-                placeholder="Ex: Futebol, Natação, Tênis..."
-                value={modalidade}
-                onChange={(e) => setModalidade(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-400"
-              />
+          {isLoadingData ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <span className="ml-3 text-gray-600">Carregando dados...</span>
             </div>
+          ) : (
+              <div className="space-y-6">
+                              {/* Unidade */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Unidade *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowUnidadeModal(true)}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Nova Unidade
+                  </button>
+                </div>
+                {unidades.length === 0 ? (
+                  <div className="w-full px-4 py-3 border border-yellow-300 bg-yellow-50 rounded-xl text-yellow-800 text-sm">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      Nenhuma unidade cadastrada. Clique em "Nova Unidade" para criar.
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={unidadeId}
+                    onChange={(e) => setUnidadeId(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900"
+                  >
+                    <option value="">Selecione uma unidade</option>
+                    {unidades.map((unidade) => (
+                      <option key={unidade.id} value={unidade.id}>
+                        {unidade.nome} - {unidade.cidade}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
 
-            {/* Data e Hora Início */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data e Hora de Início *
-              </label>
-              <input
-                type="datetime-local"
-                value={dataHoraInicio}
-                onChange={(e) => setDataHoraInicio(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900"
-              />
-            </div>
+                              {/* Local */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Local *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowLocalModal(true)}
+                    disabled={!unidadeId}
+                    className="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1 disabled:text-gray-400 disabled:cursor-not-allowed"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Novo Local
+                  </button>
+                </div>
+                {!unidadeId ? (
+                  <div className="w-full px-4 py-3 border border-gray-300 bg-gray-50 rounded-xl text-gray-500 text-sm">
+                    Selecione uma unidade primeiro para ver os locais disponíveis
+                  </div>
+                ) : locais.filter(local => local.unidadeId === unidadeId).length === 0 ? (
+                  <div className="w-full px-4 py-3 border border-yellow-300 bg-yellow-50 rounded-xl text-yellow-800 text-sm">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                      </svg>
+                      Nenhum local cadastrado para esta unidade. Clique em "Novo Local" para criar.
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={localId}
+                    onChange={(e) => setLocalId(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900"
+                  >
+                    <option value="">Selecione um local</option>
+                    {locais
+                      .filter(local => local.unidadeId === unidadeId)
+                      .map((local) => (
+                        <option key={local.id} value={local.id}>
+                          {local.nome}
+                        </option>
+                      ))}
+                  </select>
+                )}
+              </div>
 
-            {/* Data e Hora Fim */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Data e Hora de Fim *
-              </label>
-              <input
-                type="datetime-local"
-                value={dataHoraFim}
-                onChange={(e) => setDataHoraFim(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900"
-              />
-            </div>
+                {/* Modalidade */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Modalidade *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Ex: Futebol, Natação, Tênis..."
+                    value={modalidade}
+                    onChange={(e) => setModalidade(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-400"
+                  />
+                </div>
 
-            {/* Vagas */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Número de Vagas *
-              </label>
-              <input
-                type="number"
-                min="1"
-                placeholder="Ex: 20"
-                value={vagasTotais}
-                onChange={(e) => setVagasTotais(Number(e.target.value))}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-400"
-              />
-            </div>
-          </div>
+                {/* Data e Hora Início */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Data e Hora de Início *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={dataHoraInicio}
+                    onChange={(e) => setDataHoraInicio(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900"
+                  />
+                </div>
+
+                {/* Data e Hora Fim */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Data e Hora de Fim *
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={dataHoraFim}
+                    onChange={(e) => setDataHoraFim(e.target.value)}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900"
+                  />
+                </div>
+
+                {/* Vagas */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Número de Vagas *
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    placeholder="Ex: 20"
+                    value={vagasTotais}
+                    onChange={(e) => setVagasTotais(Number(e.target.value))}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-400"
+                  />
+                </div>
+
+              </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -145,6 +287,22 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
           </button>
         </div>
       </div>
+
+      {/* Modais de criação */}
+      {showUnidadeModal && (
+        <CriarUnidadeModal
+          onClose={() => setShowUnidadeModal(false)}
+          onCreated={handleUnidadeCreated}
+        />
+      )}
+
+      {showLocalModal && (
+        <CriarLocalModal
+          onClose={() => setShowLocalModal(false)}
+          onCreated={handleLocalCreated}
+          unidades={unidades}
+        />
+      )}
     </div>
   );
 }
