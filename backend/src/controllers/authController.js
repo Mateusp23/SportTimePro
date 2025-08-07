@@ -45,24 +45,22 @@ exports.registerCliente = async (req, res) => {
 
 exports.login = async (req, res) => {
   const { email, senha } = req.body;
-  const usuario = await prisma.usuario.findUnique({ where: { email } });
-
-  if (!usuario.emailConfirmado) {
-    return res.status(403).json({ message: 'Confirme seu e-mail para acessar a conta.' });
-  }
-
   try {
-    const user = await prisma.usuario.findUnique({
-      where: { email }
-    });
+    const usuario = await prisma.usuario.findUnique({ where: { email } });
 
-    if (!user) return res.status(404).json({ message: 'Usuário não encontrado' });
+    if (!usuario) {
+      return res.status(404).json({ message: "Usuário não encontrado" });
+    }
 
-    const valid = await bcrypt.compare(senha, user.senhaHash);
-    if (!valid) return res.status(401).json({ message: 'Senha inválida' });
+    if (!usuario.emailConfirmado) {
+      return res.status(403).json({ message: "Confirme seu e-mail para acessar a conta." });
+    }
 
-    const token = generateToken(user);
-    return res.json({ token, user });
+    const valid = await bcrypt.compare(senha, usuario.senhaHash);
+    if (!valid) return res.status(401).json({ message: "Senha inválida" });
+
+    const token = generateToken(usuario);
+    return res.json({ token, user: usuario });
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }

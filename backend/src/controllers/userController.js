@@ -2,22 +2,21 @@ const prisma = require('../config/db');
 
 // Já temos getAllUsers e updateRoles
 exports.getAllUsers = async (req, res) => {
-  const { clienteId, roles } = req.user;
-
-  if (!roles.includes('ADMIN')) {
-    return res.status(403).json({ message: 'Permissão negada' });
-  }
+  const { clienteId } = req.user;
 
   try {
     const users = await prisma.usuario.findMany({
-      where: { clienteId },
+      where: {
+        clienteId,
+        roles: {
+          hasSome: ['ADMIN', 'PROFESSOR']
+        }
+      },
       select: {
         id: true,
         nome: true,
         email: true,
-        roles: true,
-        criadoEm: true,
-        atualizadoEm: true
+        roles: true
       }
     });
 
