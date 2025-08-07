@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useProfessores } from "@/app/hooks/useProfessores";
+import Alert from "@/app/components/ValidationAlert";
 
 type FilterType = "all" | "admin" | "professor" | "cliente";
 
@@ -9,12 +10,32 @@ export default function ProfessoresPage() {
   const { usuarios, isLoading, error, tornarProfessor } = useProfessores();
   const [filter, setFilter] = useState<FilterType>("all");
 
+  const [showAlert, setShowAlert] = useState(false);
+  const [alertConfig, setAlertConfig] = useState({
+    type: "success" as "success" | "error" | "warning" | "info",
+    title: "",
+    message: "",
+    buttonText: ""
+  });
+
   const handleTornarProfessor = async (id: string) => {
     try {
       await tornarProfessor(id);
-      alert("Usuário promovido a professor com sucesso!");
+      setAlertConfig({
+        type: "success",
+        title: "Sucesso!",
+        message: "Usuário promovido a professor com sucesso!",
+        buttonText: "Continuar"
+      });
+      setShowAlert(true);
     } catch (err) {
-      alert("Erro ao promover usuário a professor");
+      setAlertConfig({
+        type: "error",
+        title: "Erro",
+        message: "Erro ao promover usuário a professor. Tente novamente.",
+        buttonText: "Tentar Novamente"
+      });
+      setShowAlert(true);
     }
   };
 
@@ -184,6 +205,17 @@ export default function ProfessoresPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {/* Alert Genérico */}
+      {showAlert && (
+        <Alert
+          type={alertConfig.type}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          buttonText={alertConfig.buttonText}
+          onClose={() => setShowAlert(false)}
+        />
       )}
     </div>
   );

@@ -90,7 +90,7 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
     } catch (error: any) {
       console.error("Erro ao criar aula:", error);
       const message = error.response?.data?.message || "Erro ao criar aula";
-      alert(message);
+      alert(message); // Mantendo alert simples por enquanto
     } finally {
       setIsLoading(false);
     }
