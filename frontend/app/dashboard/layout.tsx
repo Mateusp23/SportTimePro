@@ -4,7 +4,7 @@ import { useAuthStore } from "@/app/store/authStore";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import Link from "next/link";
-import { LogOut, CalendarDays, Home, Users } from "lucide-react";
+import { LogOut, CalendarDays, Home, Users, GraduationCap } from "lucide-react";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -29,6 +29,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </Link>
           <Link href="/dashboard/agendamentos" className="flex items-center gap-2 p-3 rounded hover:bg-primary/10 transition">
             <Users size={18} /> Agendamentos
+          </Link>
+          <Link href="/dashboard/professores" className="flex items-center gap-2 p-3 rounded hover:bg-primary/10 transition">
+            <GraduationCap size={18} /> Professores
           </Link>
         </nav>
         <button

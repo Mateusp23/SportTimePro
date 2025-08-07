@@ -5,6 +5,7 @@ import api from "@/app/lib/api";
 import CriarUnidadeModal from "./CriarUnidadeModal";
 import CriarLocalModal from "./CriarLocalModal";
 import { useUnidadesLocais } from "@/app/hooks/useUnidadesLocais";
+import { useUser } from "@/app/hooks/useUser";
 
 export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [modalidade, setModalidade] = useState("");
@@ -18,6 +19,7 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
   const [showLocalModal, setShowLocalModal] = useState(false);
 
   const { unidades, locais, isLoading: isLoadingData, createUnidade, createLocal } = useUnidadesLocais();
+  const { user, isLoading: isLoadingUser } = useUser();
 
   useEffect(() => {
     // Selecionar primeira unidade e local por padrão quando dados carregarem
@@ -47,20 +49,48 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
       return;
     }
 
+    // Validação de usuário
+    if (!user) {
+      alert("Erro: Dados do usuário não carregados");
+      return;
+    }
+
+    // Verificar se o usuário é professor ou admin
+    if (!user.roles.includes("PROFESSOR") && !user.roles.includes("ADMIN")) {
+      alert("Apenas professores e administradores podem criar aulas");
+      return;
+    }
+
+    // Validação de datas
+    const inicio = new Date(dataHoraInicio);
+    const fim = new Date(dataHoraFim);
+    
+    if (inicio >= fim) {
+      alert("A data/hora de fim deve ser posterior à data/hora de início");
+      return;
+    }
+
     setIsLoading(true);
     try {
+      // Formatar datas para UTC
+      const dataHoraInicioUTC = new Date(dataHoraInicio).toISOString();
+      const dataHoraFimUTC = new Date(dataHoraFim).toISOString();
+
       await api.post("/aulas", {
-        modalidade,
-        dataHoraInicio,
-        dataHoraFim,
-        vagasTotais,
+        modalidade: modalidade.toUpperCase(),
+        professorId: user.id,
         unidadeId,
         localId,
+        dataHoraInicio: dataHoraInicioUTC,
+        dataHoraFim: dataHoraFimUTC,
+        vagasTotais,
       });
       onCreated();
       onClose();
-    } catch (error) {
-      alert("Erro ao criar aula");
+    } catch (error: any) {
+      console.error("Erro ao criar aula:", error);
+      const message = error.response?.data?.message || "Erro ao criar aula";
+      alert(message);
     } finally {
       setIsLoading(false);
     }
@@ -80,24 +110,31 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl transform transition-all duration-300 ease-out">
         {/* Header */}
-        <div className="px-8 pt-8 pb-6 border-b border-gray-100">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-bold text-gray-900">Nova Aula</h2>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 hover:bg-gray-100 rounded-full"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+                  <div className="px-8 pt-8 pb-6 border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-gray-900">Nova Aula</h2>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 hover:bg-gray-100 rounded-full"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <p className="text-gray-600 mt-2">Preencha os dados da nova aula</p>
+            {user && (
+              <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                <p className="text-sm text-blue-700">
+                  <strong>Professor:</strong> {user.nome} ({user.roles.join(", ")})
+                </p>
+              </div>
+            )}
           </div>
-          <p className="text-gray-600 mt-2">Preencha os dados da nova aula</p>
-        </div>
 
         {/* Content */}
         <div className="px-8 py-6">
-          {isLoadingData ? (
+          {isLoadingData || isLoadingUser ? (
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               <span className="ml-3 text-gray-600">Carregando dados...</span>
