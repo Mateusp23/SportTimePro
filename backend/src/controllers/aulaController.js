@@ -57,17 +57,24 @@ exports.createAula = async (req, res) => {
   }
 };
 
-
 exports.getAulas = async (req, res) => {
   const { clienteId } = req.user;
 
   try {
     const aulas = await prisma.aula.findMany({
       where: { clienteId },
-      include: {
+      select: {
+        id: true,
+        modalidade: true,
+        dataHoraInicio: true,
+        dataHoraFim: true,
+        vagasTotais: true,
+        professorId: true,
+        unidadeId: true,
+        localId: true,
         professor: { select: { nome: true } },
         unidade: { select: { nome: true } },
-        local: { select: { nome: true } }
+        local: { select: { nome: true } },
       },
       orderBy: { dataHoraInicio: 'asc' }
     });
