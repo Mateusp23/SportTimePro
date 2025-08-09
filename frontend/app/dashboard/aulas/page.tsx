@@ -78,22 +78,22 @@ export default function AulasPage() {
         />
       )}
 
-      <table className="w-full border">
+      <table className="w-full  border">
         <thead>
-          <tr className="bg-gray-100">
-            <th className="p-2">Modalidade</th>
-            <th className="p-2">Data</th>
-            <th className="p-2">Vagas</th>
-            <th className="p-2">Ações</th>
+          <tr className="w-full border bg-gray-50 border-gray-200 rounded-lg">
+            <th className="p-3 text-left font-medium text-gray-700 border-b">Modalidade</th>
+            <th className="p-3 text-left font-medium text-gray-700 border-b">Data</th>
+            <th className="p-3 text-left font-medium text-gray-700 border-b">Vagas</th>
+            <th className="p-3 text-left font-medium text-gray-700 border-b">Ações</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody className="border border-gray-200 rounded-lg">
           {aulas.map((aula: any) => (
-            <tr key={aula.id} className="border-t">
-              <td className="p-2">{aula.modalidade}</td>
-              <td className="p-2">{new Date(aula.dataHoraInicio).toLocaleString()}</td>
-              <td className="p-2">{aula.vagasTotais}</td>
-              <td className="p-2">
+            <tr key={aula.id} className="hover:bg-gray-50 transition-colors">
+              <td className="p-3 border-b">{aula.modalidade}</td>
+              <td className="p-3 border-b">{new Date(aula.dataHoraInicio).toLocaleString()}</td>
+              <td className="p-3 border-b">{aula.vagasTotais}</td>
+              <td className="p-3 border-b">
                 <button
                   onClick={() => handleEdit(aula.id)}
                   className="bg-yellow-500 text-white px-2 py-1 rounded mr-2 cursor-pointer">
