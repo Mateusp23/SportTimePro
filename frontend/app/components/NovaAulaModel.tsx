@@ -110,7 +110,7 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl transform transition-all duration-300 ease-out">
         {/* Header */}
-                  <div className="px-8 pt-8 pb-6 border-b border-gray-100">
+          <div className="px-8 pt-8 pb-6 border-b border-gray-100">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-gray-900">Nova Aula</h2>
               <button
@@ -296,14 +296,14 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
           <button
             onClick={onClose}
             disabled={isLoading}
-            className="px-6 py-3 text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 cursor-pointer text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-all duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancelar
           </button>
           <button
             onClick={handleCreate}
             disabled={isLoading}
-            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/80 transition-colors cursor-pointer duration-200 font-medium shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {isLoading ? (
               <>
