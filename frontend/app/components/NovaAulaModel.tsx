@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import api from "@/app/lib/api";
 import CriarUnidadeModal from "./CriarUnidadeModal";
 import CriarLocalModal from "./CriarLocalModal";
@@ -8,64 +8,75 @@ import { useUnidadesLocais } from "@/app/hooks/useUnidadesLocais";
 import { useUser } from "@/app/hooks/useUser";
 import InputField from "./InputField";
 
-export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+type NovaAulaModalProps = {
+  onClose: () => void;
+  onCreated: () => void;
+};
+
+export default function NovaAulaModal({ onClose, onCreated }: NovaAulaModalProps) {
   const [modalidade, setModalidade] = useState("");
   const [dataHoraInicio, setDataHoraInicio] = useState("");
   const [dataHoraFim, setDataHoraFim] = useState("");
-  const [vagasTotais, setVagasTotais] = useState(0);
+  const [vagasTotais, setVagasTotais] = useState<number>(0);
   const [unidadeId, setUnidadeId] = useState("");
   const [localId, setLocalId] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+
   const [showUnidadeModal, setShowUnidadeModal] = useState(false);
   const [showLocalModal, setShowLocalModal] = useState(false);
 
   const { unidades, locais, isLoading: isLoadingData, createUnidade, createLocal } = useUnidadesLocais();
   const { user, isLoading: isLoadingUser } = useUser();
 
+  // Locais filtrados pela unidade atual
+  const locaisDaUnidade = useMemo(
+    () => (unidadeId ? locais.filter((l) => l.unidadeId === unidadeId) : []),
+    [locais, unidadeId]
+  );
+
+  // Seleciona a 1ª unidade quando carregar (se ainda não tiver uma selecionada)
   useEffect(() => {
-    // Selecionar primeira unidade e local por padrão quando dados carregarem
-    if (unidades.length > 0 && !unidadeId) {
+    if (!unidadeId && unidades.length > 0) {
       setUnidadeId(unidades[0].id);
     }
-    if (locais.length > 0 && !localId) {
-      setLocalId(locais[0].id);
+  }, [unidades, unidadeId]);
+
+  // Mantém o local coerente com a unidade (ou escolhe o primeiro disponível)
+  useEffect(() => {
+    if (!unidadeId) {
+      setLocalId("");
+      return;
     }
-  }, [unidades, locais, unidadeId, localId]);
+    if (!locaisDaUnidade.some((l) => l.id === localId)) {
+      setLocalId(locaisDaUnidade[0]?.id ?? "");
+    }
+  }, [unidadeId, locaisDaUnidade, localId]);
 
   const handleCreate = async () => {
-    // Validação básica dos campos
+    // validações simples
     if (!modalidade || !dataHoraInicio || !dataHoraFim || vagasTotais <= 0) {
       alert("Por favor, preencha todos os campos obrigatórios");
       return;
     }
-
-    // Validação de unidade e local
     if (!unidadeId) {
       alert("Por favor, selecione uma unidade ou crie uma nova");
       return;
     }
-
     if (!localId) {
       alert("Por favor, selecione um local ou crie um novo");
       return;
     }
-
-    // Validação de usuário
     if (!user) {
       alert("Erro: Dados do usuário não carregados");
       return;
     }
-
-    // Verificar se o usuário é professor ou admin
     if (!user.roles.includes("PROFESSOR") && !user.roles.includes("ADMIN")) {
       alert("Apenas professores e administradores podem criar aulas");
       return;
     }
 
-    // Validação de datas
     const inicio = new Date(dataHoraInicio);
     const fim = new Date(dataHoraFim);
-    
     if (inicio >= fim) {
       alert("A data/hora de fim deve ser posterior à data/hora de início");
       return;
@@ -73,7 +84,6 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
 
     setIsLoading(true);
     try {
-      // Formatar datas para UTC
       const dataHoraInicioUTC = new Date(dataHoraInicio).toISOString();
       const dataHoraFimUTC = new Date(dataHoraFim).toISOString();
 
@@ -86,23 +96,31 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
         dataHoraFim: dataHoraFimUTC,
         vagasTotais,
       });
+
       onCreated();
       onClose();
     } catch (error: any) {
       console.error("Erro ao criar aula:", error);
-      const message = error.response?.data?.message || "Erro ao criar aula";
-      alert(message); // Mantendo alert simples por enquanto
+      const message = error?.response?.data?.message || "Erro ao criar aula";
+      alert(message);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleUnidadeCreated = (novaUnidade: any) => {
+  // ao criar unidade dentro do modal
+  const handleUnidadeCreated = (novaUnidade: { id: string }) => {
     setUnidadeId(novaUnidade.id);
+    setLocalId(""); // deixa o efeito escolher um local válido (se houver)
     setShowUnidadeModal(false);
   };
 
-  const handleLocalCreated = (novoLocal: any) => {
+  // ao criar local dentro do modal
+  const handleLocalCreated = (novoLocal: { id: string; unidadeId: string }) => {
+    // se criou local numa outra unidade, sincroniza unidade também
+    if (novoLocal.unidadeId !== unidadeId) {
+      setUnidadeId(novoLocal.unidadeId);
+    }
     setLocalId(novoLocal.id);
     setShowLocalModal(false);
   };
@@ -111,43 +129,41 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
       <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl transform transition-all duration-300 ease-out">
         {/* Header */}
-          <div className="px-8 pt-8 pb-6 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold text-gray-900">Nova Aula</h2>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 hover:bg-gray-100 rounded-full"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <p className="text-gray-600 mt-2">Preencha os dados da nova aula</p>
-            {user && (
-              <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-700">
-                  <strong>Professor:</strong> {user.nome} ({user.roles.join(", ")})
-                </p>
-              </div>
-            )}
+        <div className="px-8 pt-8 pb-6 border-b border-gray-100">
+          <div className="flex items-center justify-between">
+            <h2 className="text-2xl font-bold text-gray-900">Nova Aula</h2>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors duration-200 p-2 hover:bg-gray-100 rounded-full"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
+          <p className="text-gray-600 mt-2">Preencha os dados da nova aula</p>
+          {user && (
+            <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+              <p className="text-sm text-blue-700">
+                <strong>Professor:</strong> {user.nome} ({user.roles.join(", ")})
+              </p>
+            </div>
+          )}
+        </div>
 
         {/* Content */}
         <div className="px-8 py-6">
           {isLoadingData || isLoadingUser ? (
             <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
               <span className="ml-3 text-gray-600">Carregando dados...</span>
             </div>
           ) : (
-              <div className="space-y-6">
-                              {/* Unidade */}
+            <div className="space-y-6">
+              {/* Unidade */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Unidade *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Unidade *</label>
                   <button
                     type="button"
                     onClick={() => setShowUnidadeModal(true)}
@@ -159,6 +175,7 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
                     Nova Unidade
                   </button>
                 </div>
+
                 {unidades.length === 0 ? (
                   <div className="w-full px-4 py-3 border border-yellow-300 bg-yellow-50 rounded-xl text-yellow-800 text-sm">
                     <div className="flex items-center gap-2">
@@ -171,7 +188,11 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
                 ) : (
                   <select
                     value={unidadeId}
-                    onChange={(e) => setUnidadeId(e.target.value)}
+                    onChange={(e) => {
+                      const nova = e.target.value;
+                      setUnidadeId(nova);
+                      setLocalId(""); // limpa até o efeito selecionar um válido
+                    }}
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900"
                   >
                     <option value="">Selecione uma unidade</option>
@@ -184,12 +205,10 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
                 )}
               </div>
 
-                              {/* Local */}
+              {/* Local */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Local *
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700">Local *</label>
                   <button
                     type="button"
                     onClick={() => setShowLocalModal(true)}
@@ -202,11 +221,12 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
                     Novo Local
                   </button>
                 </div>
+
                 {!unidadeId ? (
                   <div className="w-full px-4 py-3 border border-gray-300 bg-gray-50 rounded-xl text-gray-500 text-sm">
                     Selecione uma unidade primeiro para ver os locais disponíveis
                   </div>
-                ) : locais.filter(local => local.unidadeId === unidadeId).length === 0 ? (
+                ) : locaisDaUnidade.length === 0 ? (
                   <div className="w-full px-4 py-3 border border-yellow-300 bg-yellow-50 rounded-xl text-yellow-800 text-sm">
                     <div className="flex items-center gap-2">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -222,70 +242,59 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900"
                   >
                     <option value="">Selecione um local</option>
-                    {locais
-                      .filter(local => local.unidadeId === unidadeId)
-                      .map((local) => (
-                        <option key={local.id} value={local.id}>
-                          {local.nome}
-                        </option>
-                      ))}
+                    {locaisDaUnidade.map((local) => (
+                      <option key={local.id} value={local.id}>
+                        {local.nome}
+                      </option>
+                    ))}
                   </select>
                 )}
               </div>
 
-                {/* Modalidade */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Modalidade *
-                  </label>
-                  <InputField
-                    type="text"
-                    placeholder="Ex: Futebol, Natação, Tênis..."
-                    value={modalidade}
-                    onChange={(e) => setModalidade(e.target.value)}
-                  />
-                </div>
-
-                {/* Data e Hora Início */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Data e Hora de Início *
-                  </label>
-                  <InputField
-                    type="datetime-local"
-                    placeholder="Data e Hora de Início"
-                    value={dataHoraInicio}
-                    onChange={(e) => setDataHoraInicio(e.target.value)}
-                  />
-                </div>
-
-                {/* Data e Hora Fim */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Data e Hora de Fim *
-                  </label>
-                  <InputField
-                    type="datetime-local"
-                    placeholder="Data e Hora de Fim"
-                    value={dataHoraFim}
-                    onChange={(e) => setDataHoraFim(e.target.value)}
-                  />
-                </div>
-
-                {/* Vagas */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Número de Vagas *
-                  </label>
-                  <InputField
-                    type="number"
-                    placeholder="Ex: 20"
-                    value={vagasTotais.toString()}
-                    onChange={(e) => setVagasTotais(Number(e.target.value))}
-                  />
-                </div>
-
+              {/* Modalidade */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Modalidade *</label>
+                <InputField
+                  type="text"
+                  placeholder="Ex: Futebol, Natação, Tênis..."
+                  value={modalidade}
+                  onChange={(e) => setModalidade(e.target.value)}
+                />
               </div>
+
+              {/* Data e Hora de Início */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Data e Hora de Início *</label>
+                <InputField
+                  type="datetime-local"
+                  placeholder="Data e Hora de Início"
+                  value={dataHoraInicio}
+                  onChange={(e) => setDataHoraInicio(e.target.value)}
+                />
+              </div>
+
+              {/* Data e Hora de Fim */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Data e Hora de Fim *</label>
+                <InputField
+                  type="datetime-local"
+                  placeholder="Data e Hora de Fim"
+                  value={dataHoraFim}
+                  onChange={(e) => setDataHoraFim(e.target.value)}
+                />
+              </div>
+
+              {/* Vagas */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Número de Vagas *</label>
+                <InputField
+                  type="number"
+                  placeholder="Ex: 20"
+                  value={String(vagasTotais)}
+                  onChange={(e) => setVagasTotais(Number(e.target.value))}
+                />
+              </div>
+            </div>
           )}
         </div>
 
@@ -323,7 +332,7 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
         </div>
       </div>
 
-      {/* Modais de criação */}
+      {/* Modais auxiliares */}
       {showUnidadeModal && (
         <CriarUnidadeModal
           onClose={() => setShowUnidadeModal(false)}

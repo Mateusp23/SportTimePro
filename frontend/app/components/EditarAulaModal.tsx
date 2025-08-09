@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
 import api from "@/app/lib/api";
 import { formatarDataInput } from "@/app/utils/date/dateFormatter";
 import InputField from "./InputField";
 import Alert from "./Alert";
-import { Aula, Local, Unidade } from "../types/Aula";
+import { Aula } from "../types/types";
+import { useUnidadesLocais } from "@/app/hooks/useUnidadesLocais";
 
 interface EditarAulaModalProps {
   show: boolean;
@@ -14,59 +15,75 @@ interface EditarAulaModalProps {
   onUpdated: () => void;
 }
 
-export default function EditarAulaModal({ show, aula, onClose, onUpdated }: EditarAulaModalProps) {
+export default function EditarAulaModal({
+  show,
+  aula,
+  onClose,
+  onUpdated,
+}: EditarAulaModalProps) {
   if (!show || !aula) return null;
 
+  // estados do formulário
   const [modalidade, setModalidade] = useState(aula.modalidade || "");
-  const [dataHoraInicio, setDataHoraInicio] = useState(aula.dataHoraInicio || "");
-  const [dataHoraFim, setDataHoraFim] = useState(aula.dataHoraFim || "");
-  const [vagasTotais, setVagasTotais] = useState(aula.vagasTotais || 0);
+  const [dataHoraInicio, setDataHoraInicio] = useState(
+    formatarDataInput(aula.dataHoraInicio)
+  );
+  const [dataHoraFim, setDataHoraFim] = useState(
+    formatarDataInput(aula.dataHoraFim)
+  );
+  const [vagasTotais, setVagasTotais] = useState<number>(aula.vagasTotais || 0);
+
+  const [unidadeId, setUnidadeId] = useState<string>(aula.unidadeId || "");
+  const [localId, setLocalId] = useState<string>(aula.localId || "");
   const [isLoading, setIsLoading] = useState(false);
 
-  const [unidadeId, setUnidadeId] = useState("");
-  const [localId, setLocalId] = useState("");
+  // dados compartilhados (já limitados ao cliente pelo back)
+  const { unidades, locais, isLoading: isLoadingData } = useUnidadesLocais();
 
-  const [unidades, setUnidades] = useState<Unidade[]>([]);
-  const [locais, setLocais] = useState<Local[]>([]);
+  // locais filtrados pela unidade atual
+  const locaisDaUnidade = useMemo(
+    () => (unidadeId ? locais.filter((l) => l.unidadeId === unidadeId) : []),
+    [locais, unidadeId]
+  );
 
-  // carrega unidades ao abrir
-  useEffect(() => {
-    if (!show) return;
-    (async () => {
-      const res = await api.get<Unidade[]>("/unidades");
-      setUnidades(res.data);
-    })();
-  }, [show]);
-
-  // carrega locais quando a unidade mudar
-  useEffect(() => {
-    if (!show || !unidadeId) return;
-    (async () => {
-      const res = await api.get<Local[]>("/locais", { params: { unidadeId } });
-      setLocais(res.data);
-    })();
-  }, [show, unidadeId]);
-
-  // preenche os campos iniciais quando a aula chega/abre
+  // quando o modal abre/troca de aula, rehidrata os campos
   useEffect(() => {
     if (!show || !aula) return;
-    setModalidade(aula.modalidade);
+    setModalidade(aula.modalidade || "");
     setDataHoraInicio(formatarDataInput(aula.dataHoraInicio));
     setDataHoraFim(formatarDataInput(aula.dataHoraFim));
-    setVagasTotais(aula.vagasTotais);
-    setUnidadeId(aula.unidadeId);
-    setLocalId(aula.localId);
+    setVagasTotais(aula.vagasTotais || 0);
+    setUnidadeId(aula.unidadeId || "");
+    setLocalId(aula.localId || "");
   }, [show, aula]);
 
+  // mantém o local coerente com a unidade selecionada
+  useEffect(() => {
+    if (!unidadeId) {
+      setLocalId("");
+      return;
+    }
+    // se o local atual não pertence à unidade, escolhe o primeiro disponível
+    if (!locaisDaUnidade.some((l) => l.id === localId)) {
+      setLocalId(locaisDaUnidade[0]?.id ?? "");
+    }
+  }, [unidadeId, locaisDaUnidade, localId]);
+
   const handleUpdate = async () => {
-    if (!aula) return;
-    if (!modalidade || !dataHoraInicio || !dataHoraFim || vagasTotais <= 0 || !unidadeId || !localId) {
+    if (
+      !modalidade ||
+      !dataHoraInicio ||
+      !dataHoraFim ||
+      vagasTotais <= 0 ||
+      !unidadeId ||
+      !localId
+    ) {
       Alert({
         type: "error",
         title: "Erro ao atualizar aula",
-        message: "Preencha todos os campos corretamente",
-        onClose: () => {},
-        buttonText: "OK"
+        message: "Preencha todos os campos corretamente.",
+        onClose: () => { },
+        buttonText: "OK",
       });
       return;
     }
@@ -74,7 +91,7 @@ export default function EditarAulaModal({ show, aula, onClose, onUpdated }: Edit
     try {
       setIsLoading(true);
 
-      await api.put(`/aulas/${aula.id}`, {
+      await api.put(`/aulas/${aula!.id}`, {
         modalidade: modalidade.toUpperCase(),
         unidadeId,
         localId,
@@ -83,30 +100,30 @@ export default function EditarAulaModal({ show, aula, onClose, onUpdated }: Edit
         vagasTotais,
       });
 
-      onUpdated();
-      onClose();
-    } catch (error) {
-      Alert({
-        type: "error",
-        title: "Erro ao atualizar aula",
-        message: "Erro ao atualizar aula",
-        onClose: () => {},
-        buttonText: "OK"
-      });
-      console.error(error);
-    } finally {
       Alert({
         type: "success",
         title: "Sucesso",
         message: "Aula atualizada com sucesso",
         onClose: () => { },
-        buttonText: "OK"
+        buttonText: "OK",
       });
+
+      onUpdated();
+      onClose();
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || "Erro ao atualizar aula";
+      Alert({
+        type: "error",
+        title: "Erro ao atualizar aula",
+        message: msg,
+        onClose: () => { },
+        buttonText: "OK",
+      });
+      console.error(error);
+    } finally {
       setIsLoading(false);
     }
   };
-
-  if (!show || !aula) return null;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
@@ -115,38 +132,44 @@ export default function EditarAulaModal({ show, aula, onClose, onUpdated }: Edit
 
         {/* Unidade */}
         <div>
-          <label className="block text-sm mb-1">Unidade</label>
+          <label className="block text-sm mb-1">Unidade *</label>
           <select
             className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900"
             value={unidadeId}
             onChange={(e) => {
               setUnidadeId(e.target.value);
-              setLocalId(""); // resetar local ao trocar unidade
+              setLocalId(""); // deixa o effect escolher um local válido
             }}
+            disabled={isLoadingData}
           >
             <option value="">Selecione a unidade</option>
-            {unidades.map(u => (
-              <option key={u.id} value={u.id}>{u.nome}</option>
+            {unidades.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.nome} — {u.cidade}
+              </option>
             ))}
           </select>
         </div>
 
         {/* Local depende da unidade */}
         <div>
-          <label className="block text-sm mb-1">Local</label>
+          <label className="block text-sm mb-1">Local *</label>
           <select
             className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900"
             value={localId}
             onChange={(e) => setLocalId(e.target.value)}
-            disabled={!unidadeId}
+            disabled={!unidadeId || isLoadingData}
           >
             <option value="">Selecione o local</option>
-            {locais.map(l => (
-              <option key={l.id} value={l.id}>{l.nome}</option>
+            {locaisDaUnidade.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.nome}
+              </option>
             ))}
           </select>
         </div>
 
+        {/* Modalidade */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Modalidade *
@@ -159,6 +182,7 @@ export default function EditarAulaModal({ show, aula, onClose, onUpdated }: Edit
           />
         </div>
 
+        {/* Data e Hora de Início */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Data e Hora de Início *
@@ -166,11 +190,12 @@ export default function EditarAulaModal({ show, aula, onClose, onUpdated }: Edit
           <InputField
             type="datetime-local"
             placeholder="Data e Hora de Início"
-            value={formatarDataInput(dataHoraInicio)}
+            value={dataHoraInicio}
             onChange={(e) => setDataHoraInicio(e.target.value)}
           />
         </div>
 
+        {/* Data e Hora de Fim */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Data e Hora de Fim *
@@ -178,11 +203,12 @@ export default function EditarAulaModal({ show, aula, onClose, onUpdated }: Edit
           <InputField
             type="datetime-local"
             placeholder="Data e Hora de Fim"
-            value={formatarDataInput(dataHoraFim)}
+            value={dataHoraFim}
             onChange={(e) => setDataHoraFim(e.target.value)}
           />
         </div>
 
+        {/* Vagas */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
             Número de Vagas *
@@ -190,7 +216,7 @@ export default function EditarAulaModal({ show, aula, onClose, onUpdated }: Edit
           <InputField
             type="number"
             placeholder="Número de Vagas"
-            value={vagasTotais.toString()}
+            value={String(vagasTotais)}
             onChange={(e) => setVagasTotais(Number(e.target.value))}
           />
         </div>
@@ -205,7 +231,7 @@ export default function EditarAulaModal({ show, aula, onClose, onUpdated }: Edit
           </button>
 
           <button
-            className="px-4 py-2 rounded cursor-pointer bg-primary text-white hover:opacity-90"
+            className="px-4 py-2 rounded cursor-pointer bg-primary text-white hover:opacity-90 disabled:opacity-60"
             onClick={handleUpdate}
             disabled={isLoading}
           >
