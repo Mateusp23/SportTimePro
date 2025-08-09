@@ -1,4 +1,13 @@
-// types/Aula.ts
+// types/types.ts
+export type UserRole = "ADMIN" | "PROFESSOR" | "ALUNO" | "CLIENTE";
+
+export interface Usuario {
+  id: string;
+  nome: string;
+  email: string;
+  roles: UserRole[];
+}
+
 export interface Aula {
   id: string;
   modalidade: string;

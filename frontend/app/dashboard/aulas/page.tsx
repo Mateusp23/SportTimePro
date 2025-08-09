@@ -5,7 +5,7 @@ import api from "@/app/lib/api";
 import NovaAulaModal from "@/app/components/NovaAulaModel";
 import { useUser } from "@/app/hooks/useUser";
 import EditarAulaModal from "@/app/components/EditarAulaModal";
-import { Aula } from "@/app/types/Aula";
+import { Aula } from "@/app/types/types";
 import { confirmAlert } from "@/app/utils/confirmAlert";
 
 export default function AulasPage() {
