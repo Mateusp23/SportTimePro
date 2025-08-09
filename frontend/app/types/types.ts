@@ -25,6 +25,7 @@ export interface Aula {
 export interface Unidade {
   id: string;
   nome: string;
+  cidade: string;
 }
 
 export interface Local {

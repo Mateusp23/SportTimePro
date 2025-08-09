@@ -1,7 +1,7 @@
 // components/Alert.tsx
 import React, { useEffect } from "react";
 
-type AlertType = "success" | "error" | "warning" | "info";
+export type AlertType = "success" | "error" | "warning" | "info";
 
 type BaseProps = {
   type: AlertType;
