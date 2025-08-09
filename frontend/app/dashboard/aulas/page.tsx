@@ -5,12 +5,13 @@ import api from "@/app/lib/api";
 import NovaAulaModal from "@/app/components/NovaAulaModel";
 import { useUser } from "@/app/hooks/useUser";
 import EditarAulaModal from "@/app/components/EditarAulaModal";
+import { Aula } from "@/app/types/Aula";
 
 export default function AulasPage() {
-  const [aulas, setAulas] = useState([]);
+  const [aulas, setAulas] = useState<Aula[]>([]);
   const [showModal, setShowModal] = useState(false);
   const { user, isLoading: isLoadingUser } = useUser();
-  const [aulaSelecionada, setAulaSelecionada] = useState<any>(null);
+  const [aulaSelecionada, setAulaSelecionada] = useState<Aula | null>(null);
   const [showEditarModal, setShowEditarModal] = useState(false);
 
   const fetchAulas = async () => {
