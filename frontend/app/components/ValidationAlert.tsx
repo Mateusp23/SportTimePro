@@ -75,7 +75,7 @@ export default function Alert({ type, title, message, onClose, buttonText }: Ale
             onClick={onClose}
             className={`px-4 py-2 text-white rounded-lg transition-colors duration-200 ${config.buttonColor}`}
           >
-            {buttonText || "OK"}
+            {buttonText}
           </button>
         </div>
       </div>

@@ -3,11 +3,15 @@
 import { useEffect, useState } from "react";
 import api from "@/app/lib/api";
 import NovaAulaModal from "@/app/components/NovaAulaModel";
-
+import { useUser } from "@/app/hooks/useUser";
+import EditarAulaModal from "@/app/components/EditarAulaModal";
 
 export default function AulasPage() {
   const [aulas, setAulas] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const { user, isLoading: isLoadingUser } = useUser();
+  const [aulaSelecionada, setAulaSelecionada] = useState<any>(null);
+  const [showEditarModal, setShowEditarModal] = useState(false);
 
   const fetchAulas = async () => {
     const res = await api.get("/aulas");
@@ -23,6 +27,14 @@ export default function AulasPage() {
     await api.delete(`/aulas/${id}`);
     fetchAulas();
   };
+  
+  const handleEdit = (id: string) => {
+    const aula = aulas.find((a) => a.id === id);
+    if (!aula) return;
+
+    setAulaSelecionada(aula);
+    setShowEditarModal(true); // chama o modal exclusivo de edição
+  };
 
   const handleOpenModal = () => {
     setShowModal(true);
@@ -32,7 +44,7 @@ export default function AulasPage() {
     <div className="bg-white p-6 rounded shadow">
       <h2 className="text-2xl font-heading font-bold mb-4">Gerenciar Aulas</h2>
       <button
-        className="bg-primary text-white px-4 py-2 rounded mb-4"
+        className="bg-primary text-white px-4 py-2 rounded mb-4 hover:bg-primary/80 transition-colors cursor-pointer"
         onClick={handleOpenModal}
       >
         + Nova Aula
@@ -45,7 +57,13 @@ export default function AulasPage() {
         />
       )}
 
-
+      {showEditarModal && (
+        <EditarAulaModal
+          aula={aulaSelecionada}
+          onClose={() => setShowEditarModal(false)}
+          onUpdated={fetchAulas}
+        />
+      )}
 
       <table className="w-full border">
         <thead>
@@ -63,10 +81,14 @@ export default function AulasPage() {
               <td className="p-2">{new Date(aula.dataHoraInicio).toLocaleString()}</td>
               <td className="p-2">{aula.vagasTotais}</td>
               <td className="p-2">
-                <button className="bg-yellow-500 text-white px-2 py-1 rounded mr-2">Editar</button>
+                <button
+                  onClick={() => handleEdit(aula.id)}
+                  className="bg-yellow-500 text-white px-2 py-1 rounded mr-2 cursor-pointer">
+                  Editar
+                </button>
                 <button
                   onClick={() => handleDelete(aula.id)}
-                  className="bg-red-500 text-white px-2 py-1 rounded"
+                  className="bg-red-500 text-white px-2 py-1 rounded cursor-pointer"
                 >
                   Excluir
                 </button>
