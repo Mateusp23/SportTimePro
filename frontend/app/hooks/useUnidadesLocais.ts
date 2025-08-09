@@ -12,6 +12,10 @@ interface UseUnidadesLocaisReturn {
   isMutating: boolean;
   createUnidade: (data: { nome: string; cidade: string }) => Promise<Unidade>;
   createLocal: (data: { nome: string; unidadeId: string }) => Promise<Local>;
+  updateLocal: (id: string, data: { nome: string; unidadeId: string }) => Promise<Local>;
+  deleteLocal: (id: string) => Promise<void>;
+  updateUnidade: (id: string, data: { nome: string; cidade: string }) => Promise<Unidade>;
+  deleteUnidade: (id: string) => Promise<void>;
   refreshData: () => Promise<void>;
   getLocaisByUnidade: (unidadeId: string) => Local[];
 }
@@ -78,6 +82,46 @@ export const useUnidadesLocais = (): UseUnidadesLocaisReturn => {
     }
   };
 
+  const updateUnidade = async (id: string, data: { nome: string; cidade: string }): Promise<Unidade> => {
+    try {
+      const response = await api.put(`/unidades/${id}`, data);
+      const updated = response.data;
+      setUnidades(prev => prev.map(u => (u.id === id ? updated : u)));
+      return updated;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const deleteUnidade = async (id: string): Promise<void> => {
+    try {
+      await api.delete(`/unidades/${id}`);
+      setUnidades(prev => prev.filter(u => u.id !== id));
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const updateLocal = async (id: string, data: { nome: string; unidadeId: string }): Promise<Local> => {
+    try {
+      const response = await api.put(`/locais/${id}`, data);
+      const updated = response.data;
+      setLocais(prev => prev.map(l => (l.id === id ? updated : l)));
+      return updated;
+    } catch (err) {
+      throw err;
+    }
+  };
+
+  const deleteLocal = async (id: string): Promise<void> => {
+    try {
+      await api.delete(`/locais/${id}`);
+      setLocais(prev => prev.filter(l => l.id !== id));
+    } catch (err) {
+      throw err;
+    }
+  };
+
   const getLocaisByUnidade = useCallback(
     (unidadeId: string) => locais.filter(l => l.unidadeId === unidadeId),
     [locais]
@@ -93,6 +137,10 @@ export const useUnidadesLocais = (): UseUnidadesLocaisReturn => {
     isMutating,
     createUnidade,
     createLocal,
+    updateLocal,
+    deleteLocal,
+    updateUnidade,
+    deleteUnidade,
     refreshData,
     getLocaisByUnidade,
   };
