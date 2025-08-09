@@ -6,6 +6,7 @@ import NovaAulaModal from "@/app/components/NovaAulaModel";
 import { useUser } from "@/app/hooks/useUser";
 import EditarAulaModal from "@/app/components/EditarAulaModal";
 import { Aula } from "@/app/types/Aula";
+import { confirmAlert } from "@/app/utils/confirmAlert";
 
 export default function AulasPage() {
   const [aulas, setAulas] = useState<Aula[]>([]);
@@ -24,10 +25,20 @@ export default function AulasPage() {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Deseja excluir esta aula?")) return;
+    const ok = await confirmAlert({
+      type: "warning",
+      title: "Excluir aula",
+      message: "Tem certeza que deseja excluir esta aula? Essa ação não pode ser desfeita.",
+      confirmText: "Sim, excluir",
+      cancelText: "Cancelar",
+    });
+
+    if (!ok) return;
+
     await api.delete(`/aulas/${id}`);
     fetchAulas();
   };
+
   
   const handleEdit = (id: string) => {
     const aula = aulas.find((a) => a.id === id);
