@@ -60,6 +60,7 @@ export default function AulasPage() {
 
       {showEditarModal && (
         <EditarAulaModal
+          show={showEditarModal}
           aula={aulaSelecionada}
           onClose={() => setShowEditarModal(false)}
           onUpdated={fetchAulas}
