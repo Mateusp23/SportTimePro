@@ -56,15 +56,26 @@ exports.deleteUnidade = async (req, res) => {
   const { clienteId } = req.user;
 
   try {
-    const unidade = await prisma.unidade.deleteMany({
-      where: { id, clienteId }
-    });
+    // checar vínculos
+    const [qtdLocais, qtdAulas] = await Promise.all([
+      prisma.local.count({ where: { unidadeId: id, unidade: { clienteId } } }),
+      prisma.aula.count({ where: { unidadeId: id, clienteId } }),
+    ]);
 
-    if (unidade.count === 0) {
-      return res.status(404).json({ message: 'Unidade não encontrada.' });
+    if (qtdLocais > 0 || qtdAulas > 0) {
+      return res.status(400).json({
+        message:
+          `Não é possível excluir esta unidade: existem ${qtdLocais} local(is) e ${qtdAulas} aula(s) vinculados. ` +
+          `Exclua/mova-os antes de excluir a unidade.`,
+      });
     }
 
-    res.json({ message: 'Unidade excluída com sucesso' });
+    // excluir
+    await prisma.unidade.delete({
+      where: { id },
+    });
+
+    res.json({ message: 'Unidade excluída com sucesso.' });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
