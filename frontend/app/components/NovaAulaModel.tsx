@@ -6,6 +6,7 @@ import CriarUnidadeModal from "./CriarUnidadeModal";
 import CriarLocalModal from "./CriarLocalModal";
 import { useUnidadesLocais } from "@/app/hooks/useUnidadesLocais";
 import { useUser } from "@/app/hooks/useUser";
+import InputField from "./InputField";
 
 export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
   const [modalidade, setModalidade] = useState("");
@@ -237,12 +238,11 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Modalidade *
                   </label>
-                  <input
+                  <InputField
                     type="text"
                     placeholder="Ex: Futebol, Natação, Tênis..."
                     value={modalidade}
                     onChange={(e) => setModalidade(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-400"
                   />
                 </div>
 
@@ -251,11 +251,11 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Data e Hora de Início *
                   </label>
-                  <input
+                  <InputField
                     type="datetime-local"
+                    placeholder="Data e Hora de Início"
                     value={dataHoraInicio}
                     onChange={(e) => setDataHoraInicio(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900"
                   />
                 </div>
 
@@ -264,11 +264,11 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Data e Hora de Fim *
                   </label>
-                  <input
+                  <InputField
                     type="datetime-local"
+                    placeholder="Data e Hora de Fim"
                     value={dataHoraFim}
                     onChange={(e) => setDataHoraFim(e.target.value)}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900"
                   />
                 </div>
 
@@ -277,13 +277,11 @@ export default function NovaAulaModal({ onClose, onCreated }: { onClose: () => v
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Número de Vagas *
                   </label>
-                  <input
+                  <InputField
                     type="number"
-                    min="1"
                     placeholder="Ex: 20"
-                    value={vagasTotais}
+                    value={vagasTotais.toString()}
                     onChange={(e) => setVagasTotais(Number(e.target.value))}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-400"
                   />
                 </div>
 
