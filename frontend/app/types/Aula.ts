@@ -12,3 +12,14 @@ export interface Aula {
   unidade?: { nome: string };
   local?: { nome: string };
 }
+
+export interface Unidade {
+  id: string;
+  nome: string;
+}
+
+export interface Local {
+  id: string;
+  nome: string;
+  unidadeId: string;
+}
