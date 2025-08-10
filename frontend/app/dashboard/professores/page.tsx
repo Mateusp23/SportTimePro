@@ -188,7 +188,7 @@ export default function ProfessoresPage() {
               <tr className="bg-gray-50">
                 <th className="p-3 text-left font-medium text-gray-700 border-b">Nome</th>
                 <th className="p-3 text-left font-medium text-gray-700 border-b">E-mail</th>
-                <th className="p-3 text-left font-medium text-gray-700 border-b">Papéis</th>
+                <th className="p-3 text-left font-medium text-gray-700 border-b">Função</th>
                 <th className="p-3 text-left font-medium text-gray-700 border-b">Ações</th>
               </tr>
             </thead>
