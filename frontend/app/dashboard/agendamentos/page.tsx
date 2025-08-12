@@ -185,7 +185,7 @@ export default function AgendamentosPage() {
           )}
         </select>
 
-        {locaisDaUnidade.length > 2 &&
+        {unidadeId && locaisDaUnidade.length >=2 &&
           <select
             className="border px-3 py-2 rounded bg-white"
             value={localId}
