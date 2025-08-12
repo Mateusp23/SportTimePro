@@ -1,182 +1,265 @@
 "use client";
 
-import { useAgendamentos } from "@/app/hooks/useAgendamentos";
+import { useEffect, useMemo, useState } from "react";
+import api from "@/app/lib/api";
+import { useUser } from "@/app/hooks/useUser";
 import { useUnidadesLocais } from "@/app/hooks/useUnidadesLocais";
-import AlunosDrawer from "@/app/components/AlunosDrawer";
-import { useMemo, useState } from "react";
+
+type Aula = {
+  id: string;
+  modalidade: string;
+  dataHoraInicio: string; // ISO
+  dataHoraFim: string;    // ISO
+  vagasTotais: number;
+  professorId: string;
+  unidadeId: string;
+  localId: string;
+  unidade?: { nome: string };
+  local?: { nome: string };
+  // opcional: _count?: { agendamentos: number };
+};
+
+function startOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+function endOfDay(d: Date) {
+  const x = new Date(d);
+  x.setHours(23, 59, 59, 999);
+  return x;
+}
+function toInputDate(d: Date) {
+  // yyyy-mm-dd
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function brDay(dateISO: string) {
+  return new Date(dateISO).toLocaleDateString("pt-BR", {
+    timeZone: "UTC",
+  });
+}
+function brTime(dateISO: string) {
+  return new Date(dateISO).toLocaleTimeString("pt-BR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+  });
+}
 
 export default function AgendamentosPage() {
+  const { user: me } = useUser();
   const { unidades, locais } = useUnidadesLocais();
-  const { groupedByDay, filtros, setFiltros, isLoading, error } = useAgendamentos({
-    onlyMine: true, // começa mostrando "minhas aulas"; pode mudar no toggle
-  });
 
-  const [drawerAulaId, setDrawerAulaId] = useState<string | null>(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [aulas, setAulas] = useState<Aula[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const dias = useMemo(() => [...groupedByDay.entries()], [groupedByDay]);
+  // filtros
+  const [dateStart, setDateStart] = useState("");
+  const [dateEnd, setDateEnd] = useState("");
+  const [unidadeId, setUnidadeId] = useState<string>("");
+  const [localId, setLocalId] = useState<string>("");
+  const [modalidade, setModalidade] = useState<string>("");
+  const [onlyMine, setOnlyMine] = useState<boolean>(true);
 
-  const openAlunos = (id: string) => {
-    setDrawerAulaId(id);
-    setDrawerOpen(true);
-  };
+  // carregar aulas (sem filtros do backend por enquanto)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        setIsLoading(true);
+        const { data } = await api.get<Aula[]>("/aulas", {
+          // se depois quiser enviar filtros ao backend:
+          // params: { dateStart, dateEnd, unidadeId, localId, modalidade, onlyMine }
+        });
+        if (alive) setAulas(data);
+      } finally {
+        if (alive) setIsLoading(false);
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  // quando trocar unidade, limpar local
+  useEffect(() => {
+    setLocalId("");
+  }, [unidadeId]);
+
+  const locaisDaUnidade = useMemo(
+    () => (unidadeId ? locais.filter((l) => l.unidadeId === unidadeId) : locais),
+    [locais, unidadeId]
+  );
+
+  // gerar lista de modalidades únicas (para o select)
+  const modalidades = useMemo(() => {
+    const set = new Set(aulas.map((a) => a.modalidade?.toUpperCase().trim()).filter(Boolean));
+    return Array.from(set).sort();
+  }, [aulas]);
+
+  const filteredAulas = useMemo(() => {
+    if (!aulas.length) return [];
+
+    const start = startOfDay(new Date(dateStart || ""));
+    const end = endOfDay(new Date(dateEnd || ""));
+
+    return aulas
+      .filter((a) => {
+        const inicio = new Date(a.dataHoraInicio);
+        if (inicio < start || inicio > end) return false;
+
+        if (unidadeId && a.unidadeId !== unidadeId) return false;
+        if (localId && a.localId !== localId) return false;
+
+        if (modalidade) {
+          const aMod = (a.modalidade || "").toUpperCase().trim();
+          if (!aMod.includes(modalidade.toUpperCase().trim())) return false;
+        }
+
+        if (onlyMine && me?.id && a.professorId !== me.id) return false;
+
+        return true;
+      })
+      .sort(
+        (a, b) =>
+          new Date(a.dataHoraInicio).getTime() - new Date(b.dataHoraInicio).getTime()
+      );
+  }, [aulas, dateStart, dateEnd, unidadeId, localId, modalidade, onlyMine, me?.id]);
+
+  // agrupado por dia
+  const grouped = useMemo(() => {
+    const map = new Map<string, Aula[]>();
+    for (const a of filteredAulas) {
+      const key = brDay(a.dataHoraInicio);
+      const arr = map.get(key) || [];
+      arr.push(a);
+      map.set(key, arr);
+    }
+    // volta como array ordenado por data
+    return Array.from(map.entries()).sort(([d1], [d2]) => {
+      const [dd1, mm1, yy1] = d1.split("/").map(Number);
+      const [dd2, mm2, yy2] = d2.split("/").map(Number);
+      return new Date(yy1!, mm1! - 1, dd1!).getTime() - new Date(yy2!, mm2! - 1, dd2!).getTime();
+    });
+  }, [filteredAulas]);
 
   return (
     <div className="bg-white p-6 rounded shadow">
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-2xl font-heading font-bold">Agendamentos</h2>
-        <div className="flex gap-2 items-center">
-          {/* Período */}
-          <input
-            type="date"
-            value={filtros.from.slice(0, 10)}
-            onChange={(e) =>
-              setFiltros((f) => ({
-                ...f,
-                from: new Date(`${e.target.value}T00:00:00`).toISOString(),
-              }))
-            }
-            className="border px-3 py-2 rounded"
-          />
-          <input
-            type="date"
-            value={filtros.to.slice(0, 10)}
-            onChange={(e) =>
-              setFiltros((f) => ({
-                ...f,
-                to: new Date(`${e.target.value}T23:59:59`).toISOString(),
-              }))
-            }
-            className="border px-3 py-2 rounded"
-          />
+      <h2 className="text-2xl font-heading font-bold mb-4">Agendamentos</h2>
 
-          {/* Unidade / Local */}
+      {/* Filtros */}
+      <div className="flex flex-wrap gap-3 items-center mb-6">
+        <input
+          type="date"
+          value={dateStart}
+          onChange={(e) => setDateStart(e.target.value)}
+          className="border px-3 py-2 rounded"
+        />
+        <input
+          type="date"
+          value={dateEnd}
+          onChange={(e) => setDateEnd(e.target.value)}
+          className="border px-3 py-2 rounded"
+        />
+
+        <select
+          className="border px-3 py-2 rounded bg-white"
+          value={unidadeId}
+          onChange={(e) => setUnidadeId(e.target.value)}
+          disabled={unidades.length === 0}
+        >
+          {unidades.length === 0 ? (
+            <option value="">Carregando unidades...</option>
+          ) : (
+            <>
+              <option value="">Todas unidades</option>
+              {unidades.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.nome}
+                </option>
+              ))}
+            </>
+          )}
+        </select>
+
+        {locaisDaUnidade.length > 2 &&
           <select
             className="border px-3 py-2 rounded bg-white"
-            value={filtros.unidadeId ?? ""}
-            onChange={(e) =>
-              setFiltros((f) => ({
-                ...f,
-                unidadeId: e.target.value || undefined,
-                localId: undefined,
-              }))
-            }
+            value={localId}
+            onChange={(e) => setLocalId(e.target.value)}
+            disabled={!unidadeId}
           >
-            <option value="">Todas unidades</option>
-            {unidades.map((u) => (
-              <option key={u.id} value={u.id}>
-                {u.nome}
+            <option value="">{unidadeId ? "Todos locais" : "Selecione um local"}</option>
+            {locaisDaUnidade.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.nome}
               </option>
             ))}
           </select>
+        }
 
-          <select
-            className="border px-3 py-2 rounded bg-white"
-            value={filtros.localId ?? ""}
-            onChange={(e) =>
-              setFiltros((f) => ({ ...f, localId: e.target.value || undefined }))
-            }
-          >
-            <option value="">Todos locais</option>
-            {locais
-              .filter((l) => !filtros.unidadeId || l.unidadeId === filtros.unidadeId)
-              .map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.nome}
-                </option>
-              ))}
-          </select>
+        <select
+          className="border px-3 py-2 rounded bg-white"
+          value={modalidade}
+          onChange={(e) => setModalidade(e.target.value)}
+        >
+          <option value="">Modalidade</option>
+          {modalidades.map((m) => (
+            <option key={m} value={m}>
+              {m}
+            </option>
+          ))}
+        </select>
 
-          {/* Modalidade */}
+        <label className="flex items-center gap-2 text-sm text-gray-700 ml-auto">
           <input
-            className="border px-3 py-2 rounded"
-            placeholder="Modalidade"
-            value={filtros.modalidade ?? ""}
-            onChange={(e) =>
-              setFiltros((f) => ({
-                ...f,
-                modalidade: e.target.value || undefined,
-              }))
-            }
+            type="checkbox"
+            className="accent-primary"
+            checked={onlyMine}
+            onChange={(e) => setOnlyMine(e.target.checked)}
           />
-
-          {/* Somente minhas */}
-          <label className="flex items-center gap-2 text-sm ml-2">
-            <input
-              type="checkbox"
-              checked={!!filtros.onlyMine}
-              onChange={(e) =>
-                setFiltros((f) => ({ ...f, onlyMine: e.target.checked }))
-              }
-            />
-            Somente minhas aulas
-          </label>
-        </div>
+          Somente minhas aulas
+        </label>
       </div>
 
-      {/* Estado */}
-      {isLoading && <p className="text-gray-500">Carregando…</p>}
-      {error && <p className="text-red-600">{error}</p>}
-
-      {/* Lista por dia */}
-      {!isLoading && !error && (
-        <div className="space-y-6">
-          {dias.length === 0 && (
-            <div className="text-gray-500">Nenhuma aula no período.</div>
-          )}
-
-          {dias.map(([day, list]) => (
-            <div key={day} className="border rounded-lg overflow-hidden">
-              <div className="px-4 py-2 bg-gray-50 font-medium">
-                {new Date(day).toLocaleDateString()}
-              </div>
-
-              <ul className="divide-y">
-                {list.map((aula) => {
-                  const ini = new Date(aula.dataHoraInicio);
-                  const fim = new Date(aula.dataHoraFim);
-                  const lotada = aula.inscritosCount >= aula.vagasTotais;
-
+      {/* Lista */}
+      {isLoading ? (
+        <div className="flex items-center gap-2 text-gray-500">
+          <div className="animate-spin h-5 w-5 border-b-2 border-primary rounded-full" />
+          Carregando…
+        </div>
+      ) : grouped.length === 0 ? (
+        <p className="text-gray-500">Nenhuma aula encontrada com os filtros aplicados.</p>
+      ) : (
+        <div className="space-y-4">
+          {grouped.map(([dia, aulasDoDia]) => (
+            <div key={dia} className="border rounded-xl overflow-hidden">
+              <div className="px-4 py-2 bg-gray-50 text-gray-700 font-medium">{dia}</div>
+              <ul>
+                {aulasDoDia.map((a) => {
+                  // caso não tenha count no back ainda:
+                  const inscritos = (a as any)?._count?.agendamentos ?? 0;
                   return (
                     <li
-                      key={aula.id}
-                      className="p-4 flex items-center justify-between"
+                      key={a.id}
+                      className="px-4 py-3 flex items-center gap-3 border-t"
                     >
-                      <div>
-                        <div className="font-semibold">{aula.modalidade}</div>
+                      <div className="flex-1">
+                        <div className="font-semibold">{a.modalidade}</div>
                         <div className="text-sm text-gray-600">
-                          {ini.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                          {" – "}
-                          {fim.toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                          {" • "}
-                          {aula.unidade?.nome} / {aula.local?.nome}
+                          {brTime(a.dataHoraInicio)} – {brTime(a.dataHoraFim)} •{" "}
+                          {a.unidade?.nome || "Unidade"} / {a.local?.nome || "Local"}
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={`text-xs px-2 py-1 rounded-full ${lotada
-                              ? "bg-red-100 text-red-700"
-                              : "bg-green-100 text-green-700"
-                            }`}
-                          title="Inscritos / Vagas"
-                        >
-                          {aula.inscritosCount}/{aula.vagasTotais}
-                        </span>
-
-                        <button
-                          className="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
-                          onClick={() => openAlunos(aula.id)}
-                        >
-                          Ver alunos
-                        </button>
-                      </div>
+                      <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full">
+                        {inscritos}/{a.vagasTotais}
+                      </span>
+                      <button className="ml-2 bg-primary text-white text-sm px-3 py-1 rounded hover:opacity-90 cursor-pointer">
+                        Ver alunos
+                      </button>
                     </li>
                   );
                 })}
@@ -185,12 +268,6 @@ export default function AgendamentosPage() {
           ))}
         </div>
       )}
-
-      <AlunosDrawer
-        aulaId={drawerAulaId}
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-      />
     </div>
   );
 }
