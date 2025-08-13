@@ -17,7 +17,7 @@ type Aula = {
   localId: string;
   unidade?: { nome: string };
   local?: { nome: string };
-  // opcional: _count?: { agendamentos: number };
+  _count?: { agendamentos: number };
 };
 
 function startOfDay(d: Date) {
@@ -150,6 +150,8 @@ export default function AgendamentosPage() {
     });
   }, [filteredAulas]);
 
+  
+
   return (
     <div className="bg-white p-6 rounded shadow">
       <h2 className="text-2xl font-heading font-bold mb-4">Agendamentos</h2>
@@ -245,7 +247,12 @@ export default function AgendamentosPage() {
               <ul>
                 {aulasDoDia.map((a) => {
                   // caso não tenha count no back ainda:
-                  const inscritos = (a as any)?._count?.agendamentos ?? 0;
+                  const inscritos = a._count?.agendamentos ?? 0;
+                  const lotacao = inscritos / a.vagasTotais;
+                  let badgeColor = "bg-green-50 text-green-700";
+                  if (lotacao >= 1) badgeColor = "bg-red-50 text-red-700"; // lotado
+                  else if (lotacao >= 0.8) badgeColor = "bg-yellow-50 text-yellow-700"; // quase lotado
+
                   return (
                     <li
                       key={a.id}
@@ -258,7 +265,7 @@ export default function AgendamentosPage() {
                           {a.unidade?.nome || "Unidade"} / {a.local?.nome || "Local"}
                         </div>
                       </div>
-                      <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full">
+                      <span className={`text-xs font-medium px-2 py-1 rounded-full ${badgeColor}`}>
                         {inscritos}/{a.vagasTotais}
                       </span>
                       <button

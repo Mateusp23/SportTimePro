@@ -41,6 +41,7 @@ export default function AlunosDrawer({ aulaId, open, onClose }: Props) {
   const [pageSize] = useState(20);
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [aula, setAula] = useState<ApiResponse["aula"] | null>(null);
 
   // debounce simples para busca
   const [q, setQ] = useState("");
@@ -73,10 +74,12 @@ export default function AlunosDrawer({ aulaId, open, onClose }: Props) {
         setItems(Array.isArray(data?.data) ? data.data : []);
         setTotal(typeof data?.total === 'number' ? data.total : 0);
         setTotalPages(typeof data?.totalPages === 'number' ? data.totalPages : 1);
+        setAula(data?.aula || null);
       } catch (e) {
         setItems([]); // Garante que a mensagem de "nenhum aluno" apareça em caso de erro
         setTotal(0);
         setTotalPages(1);
+        setAula(null);
       } finally {
         setIsLoading(false);
       }
@@ -97,7 +100,21 @@ export default function AlunosDrawer({ aulaId, open, onClose }: Props) {
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <aside className="absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-xl p-6 flex flex-col">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold">Alunos inscritos</h3>
+          <div>
+            <h3 className="text-xl font-semibold">Alunos inscritos</h3>
+            {aula && (
+              <span
+                className={`ml-2 text-xs font-medium px-2 py-1 rounded-full ${items.length >= aula.vagasTotais
+                    ? "bg-red-50 text-red-700"
+                    : items.length >= aula.vagasTotais * 0.8
+                      ? "bg-yellow-50 text-yellow-700"
+                      : "bg-green-50 text-green-700"
+                  }`}
+              >
+                {items.length}/{aula.vagasTotais}
+              </span>
+            )}
+          </div>
           <button
             className="rounded p-2 hover:bg-gray-100"
             onClick={onClose}
@@ -106,6 +123,7 @@ export default function AlunosDrawer({ aulaId, open, onClose }: Props) {
             ✕
           </button>
         </div>
+
 
         {/* Search */}
         <div className="mb-3">
