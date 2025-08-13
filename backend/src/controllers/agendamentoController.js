@@ -78,7 +78,12 @@ exports.getAlunosPorAula = async (req, res) => {
       select: {
         id: true,
         modalidade: true,
-        dataHoraInicio: true
+        vagasTotais: true,
+        dataHoraInicio: true,
+        dataHoraFim: true,
+        professor: { select: { nome: true } },
+        unidade: { select: { nome: true } },
+        local: { select: { nome: true } }
       }
     });
 
@@ -304,7 +309,10 @@ exports.getAgendamentosPorAula = async (req, res) => {
         dataHoraFim: aula.dataHoraFim,
         professor: aula.professor.nome,
         unidade: aula.unidade.nome,
-        local: aula.local.nome
+        local: aula.local.nome,
+        vagasTotais: aula.vagasTotais,
+        vagasDisponiveis: aula.vagasTotais - aula._count.agendamentos,
+        totalAgendados: aula._count.agendamentos
       },
       totalAgendados: agendamentos.length,
       agendamentos
