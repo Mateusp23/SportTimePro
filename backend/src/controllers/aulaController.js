@@ -57,12 +57,69 @@ exports.createAula = async (req, res) => {
   }
 };
 
+// GET /aulas
+// Query params (opcionais):
+// - dateStart=yyyy-mm-dd
+// - dateEnd=yyyy-mm-dd
+// - unidadeId=<uuid>
+// - localId=<uuid>
+// - modalidade=<texto>
+// - onlyMine=true|false
+// - page=1&pageSize=20
 exports.getAulas = async (req, res) => {
-  const { clienteId } = req.user;
+  const { clienteId, userId } = req.user;
+
+  // query params
+  const {
+    dateStart,
+    dateEnd,
+    unidadeId,
+    localId,
+    modalidade,
+    onlyMine,
+    page = "1",
+    pageSize = "50",
+  } = req.query;
+
+  // paginação segura
+  const take = Math.min(Math.max(parseInt(pageSize, 10) || 50, 1), 200);
+  const currPage = Math.max(parseInt(page, 10) || 1, 1);
+  const skip = (currPage - 1) * take;
+
+  // monta where dinâmico
+  const where = { clienteId };
+
+  // intervalo de data (opcional)
+  if (dateStart && dateEnd) {
+    // Usa o dia todo em UTC para evitar cortes por timezone
+    const gte = new Date(`${dateStart}T00:00:00.000Z`);
+    const lte = new Date(`${dateEnd}T23:59:59.999Z`);
+    where.dataHoraInicio = { gte, lte };
+  }
+
+  if (unidadeId) where.unidadeId = String(unidadeId);
+  if (localId) where.localId = String(localId);
+
+  if (modalidade) {
+    where.modalidade = {
+      contains: String(modalidade),
+      mode: "insensitive",
+    };
+  }
+
+  // somente aulas do professor logado
+  if (String(onlyMine).toLowerCase() === "true") {
+    where.professorId = userId;
+  }
 
   try {
+    // count total para paginação
+    const total = await prisma.aula.count({ where });
+
     const aulas = await prisma.aula.findMany({
-      where: { clienteId },
+      where,
+      skip,
+      take,
       select: {
         id: true,
         modalidade: true,
@@ -75,11 +132,18 @@ exports.getAulas = async (req, res) => {
         professor: { select: { nome: true } },
         unidade: { select: { nome: true } },
         local: { select: { nome: true } },
+        _count: { select: { agendamentos: true } },
       },
-      orderBy: { dataHoraInicio: 'asc' }
+      orderBy: { dataHoraInicio: "asc" },
     });
 
-    res.json(aulas);
+    res.json({
+      items: aulas,
+      page: currPage,
+      pageSize: take,
+      total,
+      totalPages: Math.ceil(total / take),
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

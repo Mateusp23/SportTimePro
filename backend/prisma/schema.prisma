@@ -116,6 +116,8 @@ model Agendamento {
   status       StatusAgendamento @default(ATIVO)
   criadoEm     DateTime          @default(now())
   atualizadoEm DateTime          @updatedAt
+
+  @@unique([alunoId, aulaId])
 }
 
 model IndisponibilidadeProfessor {
