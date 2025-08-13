@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import api from "@/app/lib/api";
 import { useUser } from "@/app/hooks/useUser";
 import { useUnidadesLocais } from "@/app/hooks/useUnidadesLocais";
+import AlunosDrawer from "@/app/components/AlunosDrawer";
 
 type Aula = {
   id: string;
@@ -52,7 +53,10 @@ function brTime(dateISO: string) {
 export default function AgendamentosPage() {
   const { user: me } = useUser();
   const { unidades, locais } = useUnidadesLocais();
-
+  const [drawer, setDrawer] = useState<{ open: boolean; aulaId: string | null }>({
+    open: false,
+    aulaId: null
+  });
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -70,11 +74,11 @@ export default function AgendamentosPage() {
     (async () => {
       try {
         setIsLoading(true);
-        const { data } = await api.get<Aula[]>("/aulas", {
+        const { data } = await api.get<{ items: Aula[] }>("/aulas", {
           // se depois quiser enviar filtros ao backend:
           // params: { dateStart, dateEnd, unidadeId, localId, modalidade, onlyMine }
         });
-        if (alive) setAulas(data);
+        if (alive) setAulas(data.items);
       } finally {
         if (alive) setIsLoading(false);
       }
@@ -257,7 +261,10 @@ export default function AgendamentosPage() {
                       <span className="text-xs bg-green-50 text-green-700 px-2 py-1 rounded-full">
                         {inscritos}/{a.vagasTotais}
                       </span>
-                      <button className="ml-2 bg-primary text-white text-sm px-3 py-1 rounded hover:opacity-90 cursor-pointer">
+                      <button
+                        className="ml-2 bg-primary text-white text-sm px-3 py-1 rounded hover:opacity-90 cursor-pointer"
+                        onClick={() => setDrawer({ open: true, aulaId: a.id })}
+                      >
                         Ver alunos
                       </button>
                     </li>
@@ -268,6 +275,11 @@ export default function AgendamentosPage() {
           ))}
         </div>
       )}
+      <AlunosDrawer
+        open={drawer.open}
+        aulaId={drawer.aulaId}
+        onClose={() => setDrawer({ open: false, aulaId: null })}
+      />
     </div>
   );
 }
