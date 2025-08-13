@@ -17,7 +17,7 @@ export default function AulasPage() {
 
   const fetchAulas = async () => {
     const res = await api.get("/aulas");
-    setAulas(res.data);
+    setAulas(res.data.items);
   };
 
   useEffect(() => {
@@ -51,6 +51,10 @@ export default function AulasPage() {
   const handleOpenModal = () => {
     setShowModal(true);
   };
+  
+  useEffect(() => {
+    console.log(aulas);
+  }, [aulas]);
 
   return (
     <div className="bg-white p-6 rounded shadow">
@@ -88,7 +92,7 @@ export default function AulasPage() {
           </tr>
         </thead>
         <tbody className="border border-gray-200 rounded-lg">
-          {aulas.map((aula: any) => (
+          {aulas.map((aula: Aula) => (
             <tr key={aula.id} className="hover:bg-gray-50 transition-colors">
               <td className="p-3 border-b">{aula.modalidade}</td>
               <td className="p-3 border-b">{new Date(aula.dataHoraInicio).toLocaleString()}</td>
