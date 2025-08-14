@@ -39,7 +39,6 @@ export default function AulasPage() {
     fetchAulas();
   };
 
-  
   const handleEdit = (id: string) => {
     const aula = aulas.find((a) => a.id === id);
     if (!aula) return;

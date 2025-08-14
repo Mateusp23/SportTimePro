@@ -36,9 +36,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <Link href="/dashboard/unidades" className="flex items-center gap-2 p-3 rounded hover:bg-primary/10 transition">
             <MapPin size={18} /> Unidades
           </Link>
-
           <Link href="/dashboard/locais" className="flex items-center gap-2 p-3 rounded hover:bg-primary/10 transition">
             <Layers size={18} /> Locais
+          </Link>
+          <Link href="/dashboard/alunos" className="flex items-center gap-2 p-3 rounded hover:bg-primary/10 transition">
+            <Users size={18} /> Alunos
           </Link>
         </nav>
         <button
