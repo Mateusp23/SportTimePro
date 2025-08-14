@@ -63,6 +63,7 @@ exports.validateInviteCode = async (req, res) => {
       valid: true,
       professorNome: professor.nome,
       clienteId: cliente.id,
+      clienteNome: cliente.nome,
       message: 'Convite válido'
     });
 

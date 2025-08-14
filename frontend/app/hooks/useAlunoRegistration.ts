@@ -19,6 +19,7 @@ interface ValidateInviteResponse {
   valid: boolean;
   professorNome?: string;
   clienteId?: string;
+  clienteNome?: string;
   message?: string;
 }
 

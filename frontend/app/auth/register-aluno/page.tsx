@@ -18,6 +18,7 @@ export default function RegisterAlunoPage() {
   const [inviteCode, setInviteCode] = useState("");
   const [professorId, setProfessorId] = useState("");
   const [professorNome, setProfessorNome] = useState("");
+  const [clienteNome, setClienteNome] = useState("");
   const [inviteValid, setInviteValid] = useState(false);
   const [validatingInvite, setValidatingInvite] = useState(true);
 
@@ -43,6 +44,7 @@ export default function RegisterAlunoPage() {
       
       if (result.valid) {
         setProfessorNome(result.professorNome || "");
+        setClienteNome(result.clienteNome || "");
         setInviteValid(true);
       } else {
         setInviteValid(false);
@@ -134,9 +136,12 @@ export default function RegisterAlunoPage() {
           {professorNome && (
             <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
               <p className="text-sm text-blue-700">
+                <strong>Academia:</strong> {clienteNome}
+              </p>
+              <p className="text-sm text-blue-700 mt-1">
                 <strong>Professor:</strong> {professorNome}
               </p>
-              <p className="text-xs text-blue-600 mt-1">
+              <p className="text-xs text-blue-600 mt-2">
                 Você será automaticamente vinculado a este professor
               </p>
             </div>
