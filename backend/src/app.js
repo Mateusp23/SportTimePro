@@ -14,6 +14,7 @@ const alunoRoutes = require('./routes/alunoRoutes');
 const assinaturaRoutes = require('./routes/assinaturaRoutes');
 const aulaRoutes = require('./routes/aulaRoutes');
 const agendamentoRoutes = require('./routes/agendamentoRoutes');
+const alunoProfessorRoutes = require('./routes/alunoProfessorRoutes');
 
 const app = express();
 app.use(cors());
@@ -29,6 +30,7 @@ app.use('/api/client', clientRoutes);
 app.use('/api/alunos', alunoRoutes);
 app.use('/api/assinaturas', assinaturaRoutes);
 app.use('/api/aulas', aulaRoutes);
-app.use('/api/agendamentos', agendamentoRoutes);
+app.use('/api/agendamentos', agendamentoRoutes);  
+app.use('/api', alunoProfessorRoutes);
 
 module.exports = app;

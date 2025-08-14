@@ -23,6 +23,8 @@ model Cliente {
   inviteCode String?   @unique
   criadoEm   DateTime  @default(now())
   Aula       Aula[]
+
+  vinculosAlunoProfessor AlunoProfessor[]
 }
 
 model Usuario {
@@ -42,6 +44,36 @@ model Usuario {
   tokenExpiraEm              DateTime?
   Assinatura                 Assinatura[]
   IndisponibilidadeProfessor IndisponibilidadeProfessor[]
+
+  // vínculos professor <-> aluno
+  // - como ALUNO nessa relação:
+  professoresVinculos AlunoProfessor[] @relation("AlnProfs")
+  // - como PROFESSOR nessa relação:
+  alunosVinculados    AlunoProfessor[] @relation("ProfAlunos")
+}
+
+/**
+ * Tabela pivot N:N entre usuário-aluno e usuário-professor.
+ * Garante isolamento por clienteId e evita vínculos duplicados com @@unique.
+ */
+model AlunoProfessor {
+  id String @id @default(uuid())
+
+  alunoId     String
+  professorId String
+  clienteId   String
+
+  criadoEm DateTime @default(now())
+
+  aluno     Usuario @relation("AlnProfs", fields: [alunoId], references: [id], onDelete: Cascade)
+  professor Usuario @relation("ProfAlunos", fields: [professorId], references: [id], onDelete: Cascade)
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  // Evita vínculo duplicado (incluindo o cliente para escopo/consultas mais eficientes)
+  @@unique([clienteId, alunoId, professorId])
+  @@index([professorId])
+  @@index([alunoId])
+  @@index([clienteId])
 }
 
 model Plano {
