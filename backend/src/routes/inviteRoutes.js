@@ -6,6 +6,9 @@ const ctrl = require('../controllers/inviteController');
 // Rota pública para validar convite (sem autenticação)
 router.get('/validate-invite', ctrl.validateInviteCode);
 
+// Rota pública para buscar academias e professores
+router.get('/search-academias', ctrl.searchAcademiasProfessores);
+
 // professor/admin conseguem ler o inviteCode
 router.get('/invite-code', auth(['ADMIN', 'PROFESSOR']), ctrl.getInviteCode);
 

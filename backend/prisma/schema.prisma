@@ -25,6 +25,7 @@ model Cliente {
   Aula       Aula[]
 
   vinculosAlunoProfessor AlunoProfessor[]
+  solicitacoesVinculo    SolicitacaoVinculo[]
 }
 
 model Usuario {
@@ -50,6 +51,12 @@ model Usuario {
   professoresVinculos AlunoProfessor[] @relation("AlnProfs")
   // - como PROFESSOR nessa relação:
   alunosVinculados    AlunoProfessor[] @relation("ProfAlunos")
+
+  // solicitações de vínculo
+  // - como ALUNO solicitando:
+  solicitacoesEnviadas  SolicitacaoVinculo[] @relation("AlunoSolicitacoes")
+  // - como PROFESSOR recebendo:
+  solicitacoesRecebidas SolicitacaoVinculo[] @relation("ProfessorSolicitacoes")
 }
 
 /**
@@ -162,6 +169,35 @@ model IndisponibilidadeProfessor {
   criadoEm    DateTime @default(now())
 }
 
+/**
+ * Solicitações de vínculo entre alunos e professores.
+ * Permite que alunos solicitem vínculo sem convite direto.
+ */
+model SolicitacaoVinculo {
+  id String @id @default(uuid())
+
+  alunoId     String
+  professorId String
+  clienteId   String
+
+  status   StatusSolicitacao @default(PENDENTE)
+  mensagem String? // Mensagem opcional do aluno
+  resposta String? // Resposta do professor/admin
+
+  criadoEm     DateTime  @default(now())
+  respondidoEm DateTime?
+
+  aluno     Usuario @relation("AlunoSolicitacoes", fields: [alunoId], references: [id], onDelete: Cascade)
+  professor Usuario @relation("ProfessorSolicitacoes", fields: [professorId], references: [id], onDelete: Cascade)
+  cliente   Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteId, alunoId, professorId])
+  @@index([professorId])
+  @@index([alunoId])
+  @@index([clienteId])
+  @@index([status])
+}
+
 enum Role {
   ALUNO
   PROFESSOR
@@ -189,4 +225,10 @@ enum StatusAgendamento {
 enum TipoAtivacao {
   ONLINE
   MANUAL
+}
+
+enum StatusSolicitacao {
+  PENDENTE
+  APROVADA
+  REJEITADA
 }

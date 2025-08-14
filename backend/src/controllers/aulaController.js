@@ -150,8 +150,14 @@ exports.getAulas = async (req, res) => {
 };
 
 exports.updateAula = async (req, res) => {
-  const { aulaId } = req.params;
+  console.log('🔍 updateAula - req.params:', req.params);
+  console.log('🔍 updateAula - req.user:', req.user);
+  
+  const { id: aulaId } = req.params;
   const { clienteId, roles } = req.user;
+  
+  console.log('🔍 updateAula - Parâmetros extraídos:', { aulaId, clienteId, roles });
+  console.log('🔍 updateAula - Body:', req.body);
 
   if (!roles.includes('ADMIN') && !roles.includes('PROFESSOR')) {
     return res.status(403).json({ message: 'Permissão negada' });
@@ -195,8 +201,10 @@ exports.updateAula = async (req, res) => {
 };
 
 exports.deleteAula = async (req, res) => {
-  const { aulaId } = req.params;
+  const { id: aulaId } = req.params;
   const { clienteId, roles } = req.user;
+  
+  console.log('🔍 deleteAula - Parâmetros:', { aulaId, clienteId, roles });
 
   if (!roles.includes('ADMIN') && !roles.includes('PROFESSOR')) {
     return res.status(403).json({ message: 'Permissão negada' });
@@ -221,7 +229,7 @@ exports.deleteAula = async (req, res) => {
     // Cancelar todos os agendamentos ativos
     if (aula.agendamentos.length > 0) {
       await prisma.agendamento.updateMany({
-        where: { aulaId, status: 'ATIVO' },
+        where: { aulaId: aulaId, status: 'ATIVO' },
         data: { status: 'CANCELADO' }
       });
 
@@ -367,5 +375,62 @@ exports.createAulasRecorrentes = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+exports.listarAulasAluno = async (req, res) => {
+  const { userId, clienteId } = req.user;
+  
+  try {
+    // Verificar se o usuário é um aluno
+    const aluno = await prisma.usuario.findFirst({
+      where: { id: userId, roles: { has: 'ALUNO' } }
+    });
+    
+    if (!aluno) {
+      return res.status(403).json({ message: 'Apenas alunos podem acessar esta funcionalidade.' });
+    }
+
+    // Buscar aulas onde o aluno está vinculado
+    const aulas = await prisma.aula.findMany({
+      where: {
+        clienteId: clienteId,
+        agendamentos: {
+          some: {
+            alunoId: userId
+          }
+        }
+      },
+      include: {
+        local: {
+          select: { nome: true }
+        },
+        professor: {
+          select: { nome: true }
+        }
+      },
+      orderBy: [
+        { dataHoraInicio: 'asc' }
+      ]
+    });
+
+    // Formatar as aulas para o formato esperado pelo frontend
+    const aulasFormatadas = aulas.map(aula => ({
+      id: aula.id,
+      nome: aula.modalidade,
+      horario: aula.dataHoraInicio,
+      data: aula.dataHoraInicio,
+      local: {
+        nome: aula.local.nome
+      },
+      professor: {
+        nome: aula.professor.nome
+      }
+    }));
+
+    res.json(aulasFormatadas);
+  } catch (error) {
+    console.error('Erro ao listar aulas do aluno:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
   }
 };

@@ -16,6 +16,7 @@ const aulaRoutes = require('./routes/aulaRoutes');
 const agendamentoRoutes = require('./routes/agendamentoRoutes');
 const alunoProfessorRoutes = require('./routes/alunoProfessorRoutes');
 const inviteRoutes = require('./routes/inviteRoutes');
+const solicitacaoVinculoRoutes = require('./routes/solicitacaoVinculoRoutes');
 
 const app = express();
 
@@ -40,5 +41,6 @@ app.use('/api/aulas', aulaRoutes);
 app.use('/api/agendamentos', agendamentoRoutes);  
 app.use('/api', alunoProfessorRoutes);
 app.use('/api', inviteRoutes);
+app.use('/api/solicitacoes-vinculo', solicitacaoVinculoRoutes);
 
 module.exports = app;

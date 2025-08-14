@@ -1,17 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const {
-  createProfessor,
-  getProfessores,
-  updateProfessor,
-  deleteProfessor
-} = require('../controllers/professorController');
-const authMiddleware = require('../middlewares/authMiddleware');
+const auth = require('../middlewares/authMiddleware');
+const ctrl = require('../controllers/professorController');
 
-// Apenas Admin pode gerenciar professores
-router.post('/', authMiddleware(['ADMIN']), createProfessor);
-router.get('/', authMiddleware(['ADMIN']), getProfessores);
-router.put('/:id', authMiddleware(['ADMIN']), updateProfessor);
-router.delete('/:id', authMiddleware(['ADMIN']), deleteProfessor);
+// Rotas protegidas
+router.get('/', auth(['ADMIN', 'PROFESSOR']), ctrl.getProfessores);
+router.post('/', auth(['ADMIN']), ctrl.createProfessor);
+router.put('/:id', auth(['ADMIN']), ctrl.updateProfessor);
+router.delete('/:id', auth(['ADMIN']), ctrl.deleteProfessor);
+
+// Rota para alunos verem professores da academia
+router.get('/academia', auth(['ALUNO']), ctrl.listarProfessoresAcademia);
 
 module.exports = router;

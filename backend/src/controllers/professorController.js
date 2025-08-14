@@ -83,3 +83,28 @@ exports.deleteProfessor = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+exports.listarProfessoresAcademia = async (req, res) => {
+  const { clienteId } = req.user;
+  
+  try {
+    const professores = await prisma.usuario.findMany({
+      where: {
+        clienteId: clienteId,
+        roles: { has: 'PROFESSOR' }
+      },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        roles: true
+      },
+      orderBy: { nome: 'asc' }
+    });
+
+    res.json(professores);
+  } catch (error) {
+    console.error('Erro ao listar professores da academia:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};

@@ -3,6 +3,62 @@ const bcrypt = require('bcrypt');
 const { generateToken } = require('../utils/jwt');
 const emailService = require('../utils/emailService');
 
+exports.register = async (req, res) => {
+  const { nome, email, senha, academiaId } = req.body;
+
+  try {
+    // Verificar se o email já existe
+    const usuarioExistente = await prisma.usuario.findUnique({ where: { email } });
+    if (usuarioExistente) {
+      return res.status(400).json({ message: 'Email já cadastrado.' });
+    }
+
+    // Se academiaId foi fornecido, verificar se existe
+    let clienteId = null;
+    if (academiaId) {
+      const academia = await prisma.cliente.findUnique({
+        where: { id: academiaId }
+      });
+      if (!academia) {
+        return res.status(400).json({ message: 'Academia não encontrada.' });
+      }
+      clienteId = academia.id;
+    }
+
+    const hash = await bcrypt.hash(senha, 10);
+
+    // Criar usuário
+    const usuario = await prisma.usuario.create({
+      data: {
+        nome,
+        email,
+        senhaHash: hash,
+        roles: ['ALUNO'],
+        clienteId: clienteId,
+        emailConfirmado: true // Alunos não precisam confirmar email
+      }
+    });
+
+    // Gerar token JWT
+    const token = generateToken(usuario);
+
+    res.status(201).json({
+      message: 'Usuário cadastrado com sucesso!',
+      token,
+      user: {
+        id: usuario.id,
+        nome: usuario.nome,
+        email: usuario.email,
+        roles: usuario.roles,
+        clienteId: usuario.clienteId
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao registrar usuário:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
 exports.registerCliente = async (req, res) => {
   const { nomeCliente, nomeAdmin, email, senha, roles } = req.body;
   try {
@@ -25,11 +81,7 @@ exports.registerCliente = async (req, res) => {
     });
 
     // ✅ Gerar token JWT
-    const token = jwt.sign(
-      { userId: cliente.usuarios[0].id },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
+    const token = generateToken(cliente.usuarios[0]);
 
     // ✅ Enviar e-mail com link de confirmação
     await emailService.sendConfirmationEmail(email, token);
@@ -245,5 +297,33 @@ exports.resendConfirmationEmail = async (req, res) => {
     res.json({ message: 'Novo link de confirmação enviado para o e-mail.' });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getMe = async (req, res) => {
+  const { userId } = req.user;
+  
+  try {
+    const usuario = await prisma.usuario.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        roles: true,
+        clienteId: true,
+        emailConfirmado: true,
+        criadoEm: true
+      }
+    });
+
+    if (!usuario) {
+      return res.status(404).json({ message: 'Usuário não encontrado.' });
+    }
+
+    res.json(usuario);
+  } catch (error) {
+    console.error('Erro ao buscar usuário:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
   }
 };

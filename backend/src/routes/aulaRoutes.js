@@ -1,22 +1,19 @@
 const express = require('express');
 const router = express.Router();
-const { createAula, getAulas, updateAula, deleteAula, getAulasDisponiveis, createAulasRecorrentes } = require('../controllers/aulaController');
-const authMiddleware = require('../middlewares/authMiddleware');
+const auth = require('../middlewares/authMiddleware');
+const ctrl = require('../controllers/aulaController');
 
-router.post('/', authMiddleware(['ADMIN', 'PROFESSOR']), createAula);
-router.get('/', authMiddleware(['ADMIN', 'PROFESSOR']), getAulas);
-router.get('/disponiveis', authMiddleware(['ALUNO']), getAulasDisponiveis);
-router.put('/:aulaId',
-  authMiddleware(['ADMIN', 'PROFESSOR']),
-  updateAula
-);
-router.delete('/:aulaId',
-  authMiddleware(['ADMIN', 'PROFESSOR']),
-  deleteAula
-);
-router.post('/recorrentes',
-  authMiddleware(['ADMIN', 'PROFESSOR']),
-  createAulasRecorrentes
-);
+// Rotas públicas (se houver)
+// router.get('/public', ctrl.listarAulasPublicas);
+
+// Rotas protegidas
+router.get('/', auth(['ADMIN', 'PROFESSOR']), ctrl.getAulas);
+router.post('/', auth(['ADMIN', 'PROFESSOR']), ctrl.createAula);
+router.put('/:id', auth(['ADMIN', 'PROFESSOR']), ctrl.updateAula);
+router.delete('/:id', auth(['ADMIN']), ctrl.deleteAula);
+router.post('/recorrentes', auth(['ADMIN', 'PROFESSOR']), ctrl.createAulasRecorrentes);
+
+// Rota específica para alunos verem suas aulas
+router.get('/aluno', auth(['ALUNO']), ctrl.listarAulasAluno);
 
 module.exports = router;

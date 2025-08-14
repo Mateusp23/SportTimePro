@@ -368,3 +368,89 @@ exports.agendarAlunoNaAula = async (req, res) => {
     res.status(400).json({ message: err.message || 'Falha ao agendar aluno.' });
   }
 };
+
+exports.listarAgendamentosAluno = async (req, res) => {
+  const { userId, clienteId } = req.user;
+  
+  try {
+    // Verificar se o usuário é um aluno
+    const aluno = await prisma.usuario.findFirst({
+      where: { id: userId, roles: { has: 'ALUNO' } }
+    });
+    
+    if (!aluno) {
+      return res.status(403).json({ message: 'Apenas alunos podem acessar esta funcionalidade.' });
+    }
+
+    // Buscar agendamentos ativos do aluno
+    const agendamentos = await prisma.agendamento.findMany({
+      where: {
+        alunoId: userId,
+        aula: {
+          clienteId: clienteId
+        },
+        status: 'ATIVO'
+      },
+      include: {
+        aula: {
+          include: {
+            local: { select: { nome: true } },
+            professor: { select: { nome: true } }
+          }
+        }
+      },
+      orderBy: [
+        { aula: { dataHoraInicio: 'asc' } }
+      ]
+    });
+
+    res.json(agendamentos);
+  } catch (error) {
+    console.error('Erro ao listar agendamentos do aluno:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
+exports.listarHistoricoAgendamentosAluno = async (req, res) => {
+  const { userId, clienteId } = req.user;
+  
+  try {
+    // Verificar se o usuário é um aluno
+    const aluno = await prisma.usuario.findFirst({
+      where: { id: userId, roles: { has: 'ALUNO' } }
+    });
+    
+    if (!aluno) {
+      return res.status(403).json({ message: 'Apenas alunos podem acessar esta funcionalidade.' });
+    }
+
+    // Buscar histórico de agendamentos do aluno
+    const historico = await prisma.agendamento.findMany({
+      where: {
+        alunoId: userId,
+        aula: {
+          clienteId: clienteId
+        },
+        status: {
+          in: ['CONCLUIDO', 'CANCELADO']
+        }
+      },
+      include: {
+        aula: {
+          include: {
+            local: { select: { nome: true } },
+            professor: { select: { nome: true } }
+          }
+        }
+      },
+      orderBy: [
+        { aula: { dataHoraInicio: 'desc' } }
+      ]
+    });
+
+    res.json(historico);
+  } catch (error) {
+    console.error('Erro ao listar histórico do aluno:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};

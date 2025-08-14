@@ -1,16 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { agendarAula, getAlunosPorAula, cancelarAgendamento,
-  getAgendamentosCancelados, getHistoricoAluno, getAgendamentosPorAula, agendarAlunoNaAula } = require('../controllers/agendamentoController');
-const authMiddleware = require('../middlewares/authMiddleware');
+const auth = require('../middlewares/authMiddleware');
+const ctrl = require('../controllers/agendamentoController');
 
-router.post('/', authMiddleware(['ALUNO', 'ADMIN', 'PROFESSOR']), agendarAula);
-router.get('/:aulaId/alunos', authMiddleware(['ADMIN', 'PROFESSOR']), getAlunosPorAula);
-router.put('/:agendamentoId/cancelar', authMiddleware(['ALUNO', 'ADMIN', 'PROFESSOR']), cancelarAgendamento);
-router.get('/:aulaId/cancelados', authMiddleware(['ADMIN', 'PROFESSOR']), getAgendamentosCancelados);
-router.get('/historico', authMiddleware(['ALUNO']), getHistoricoAluno);
-router.get('/aula/:aulaId', authMiddleware(['ADMIN', 'PROFESSOR']), getAgendamentosPorAula);
-// routes/agendamentoRoutes.js
-router.post('/admin/agendar', authMiddleware(['ADMIN', 'PROFESSOR']), agendarAlunoNaAula);
+// Rotas protegidas
+router.get('/', auth(['ADMIN', 'PROFESSOR']), ctrl.getAgendamentosPorAula);
+router.post('/', auth(['ALUNO', 'ADMIN', 'PROFESSOR']), ctrl.agendarAula);
+router.put('/:agendamentoId/cancelar', auth(['ALUNO', 'ADMIN', 'PROFESSOR']), ctrl.cancelarAgendamento);
+
+// Rotas específicas para alunos
+router.get('/aluno', auth(['ALUNO']), ctrl.listarAgendamentosAluno);
+router.get('/aluno/historico', auth(['ALUNO']), ctrl.listarHistoricoAgendamentosAluno);
 
 module.exports = router;

@@ -84,3 +84,63 @@ exports.rotateInviteCode = async (req, res) => {
   await prisma.cliente.update({ where: { id: clienteId }, data: { inviteCode: code } });
   res.json({ inviteCode: code });
 };
+
+// Novo método para buscar academias e professores disponíveis
+exports.searchAcademiasProfessores = async (req, res) => {
+  const { q = '' } = req.query;
+
+  try {
+    // Buscar academias que possuem professores
+    const academias = await prisma.cliente.findMany({
+      where: {
+        usuarios: {
+          some: {
+            roles: { has: 'PROFESSOR' }
+          }
+        },
+        nome: {
+          contains: q,
+          mode: 'insensitive'
+        }
+      },
+      select: {
+        id: true,
+        nome: true,
+        usuarios: {
+          where: {
+            roles: { has: 'PROFESSOR' }
+          },
+          select: {
+            id: true,
+            nome: true,
+            email: true,
+            roles: true
+          }
+        }
+      }
+    });
+
+    // Formatar resposta
+    const resultado = academias.map(academia => ({
+      academiaId: academia.id,
+      academiaNome: academia.nome,
+      professores: academia.usuarios.map(prof => ({
+        id: prof.id,
+        nome: prof.nome,
+        email: prof.email,
+        roles: prof.roles
+      }))
+    }));
+
+    res.json({
+      academias: resultado,
+      total: resultado.length
+    });
+
+  } catch (error) {
+    console.error('Erro ao buscar academias:', error);
+    res.status(500).json({ 
+      message: 'Erro interno do servidor' 
+    });
+  }
+};
