@@ -12,4 +12,5 @@ export interface AppUser {
   id: string;
   clienteId: string;
   roles: Role[];
+  nome: string;
 }

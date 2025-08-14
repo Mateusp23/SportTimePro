@@ -40,9 +40,14 @@ export default function AulasPage() {
   };
 
   const handleEdit = (id: string) => {
+    console.log('🔍 handleEdit - ID recebido:', id);
     const aula = aulas.find((a) => a.id === id);
-    if (!aula) return;
+    if (!aula) {
+      console.log('❌ Aula não encontrada para o ID:', id);
+      return;
+    }
 
+    console.log('🔍 Aula encontrada:', aula);
     setAulaSelecionada(aula);
     setShowEditarModal(true); // chama o modal exclusivo de edição
   };
@@ -52,8 +57,12 @@ export default function AulasPage() {
   };
   
   useEffect(() => {
-    console.log(aulas);
+    console.log('📊 Aulas atualizadas:', aulas);
   }, [aulas]);
+  
+  useEffect(() => {
+    console.log('🔍 Estado do modal de edição:', { showEditarModal, aulaSelecionada });
+  }, [showEditarModal, aulaSelecionada]);
 
   return (
     <div className="bg-white p-6 rounded shadow">
@@ -76,8 +85,16 @@ export default function AulasPage() {
         <EditarAulaModal
           show={showEditarModal}
           aula={aulaSelecionada}
-          onClose={() => setShowEditarModal(false)}
-          onUpdated={fetchAulas}
+          onClose={() => {
+            console.log('🔍 onClose chamado - fechando modal');
+            console.log('🔍 Estado antes de fechar:', showEditarModal);
+            setShowEditarModal(false);
+            console.log('🔍 Estado após fechar:', false);
+          }}
+          onUpdated={() => {
+            console.log('🔍 onUpdated chamado - atualizando lista');
+            fetchAulas();
+          }}
         />
       )}
 

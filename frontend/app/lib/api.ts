@@ -8,6 +8,7 @@ const api = axios.create({
 // Anexa Authorization se houver token
 api.interceptors.request.use((config) => {
   const token = useAuthStore.getState().token;
+  console.log('🔍 API Interceptor - Token:', token ? 'Presente' : 'Ausente');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });

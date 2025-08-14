@@ -21,7 +21,14 @@ export default function EditarAulaModal({
   onClose,
   onUpdated,
 }: EditarAulaModalProps) {
-  if (!show || !aula) return null;
+  console.log('🔍 EditarAulaModal - Props recebidas:', { show, aula });
+  
+  if (!show || !aula) {
+    console.log('🔍 EditarAulaModal - Modal não deve ser renderizado');
+    return null;
+  }
+  
+  console.log('🔍 EditarAulaModal - Renderizando modal');
 
   // estados do formulário
   const [modalidade, setModalidade] = useState(aula.modalidade || "");
@@ -90,8 +97,10 @@ export default function EditarAulaModal({
 
     try {
       setIsLoading(true);
-
-      await api.put(`/aulas/${aula!.id}`, {
+      
+      const url = `/aulas/${aula!.id}`;
+      console.log('🔍 EditarAulaModal - URL da requisição:', url);
+      console.log('🔍 EditarAulaModal - Dados enviados:', {
         modalidade: modalidade.toUpperCase(),
         unidadeId,
         localId,
@@ -100,18 +109,30 @@ export default function EditarAulaModal({
         vagasTotais,
       });
 
-      Alert({
-        type: "success",
-        title: "Sucesso",
-        message: "Aula atualizada com sucesso",
-        onClose: () => { },
-        buttonText: "OK",
+      await api.put(url, {
+        modalidade: modalidade.toUpperCase(),
+        unidadeId,
+        localId,
+        dataHoraInicio: new Date(dataHoraInicio).toISOString(),
+        dataHoraFim: new Date(dataHoraFim).toISOString(),
+        vagasTotais,
       });
 
-      onUpdated();
+      console.log('✅ Aula atualizada com sucesso!');
+      console.log('🔍 Chamando onClose()...');
+      
+      // Fechar modal e atualizar lista
       onClose();
+      
+      console.log('🔍 Chamando onUpdated()...');
+      onUpdated();
+      
+      console.log('🔍 Callbacks executados com sucesso!');
     } catch (error: any) {
       const msg = error?.response?.data?.message || "Erro ao atualizar aula";
+      console.error('❌ Erro ao atualizar aula:', error);
+      
+      // Mostrar alert apenas em caso de erro
       Alert({
         type: "error",
         title: "Erro ao atualizar aula",
@@ -119,7 +140,6 @@ export default function EditarAulaModal({
         onClose: () => { },
         buttonText: "OK",
       });
-      console.error(error);
     } finally {
       setIsLoading(false);
     }
