@@ -15,9 +15,16 @@ const assinaturaRoutes = require('./routes/assinaturaRoutes');
 const aulaRoutes = require('./routes/aulaRoutes');
 const agendamentoRoutes = require('./routes/agendamentoRoutes');
 const alunoProfessorRoutes = require('./routes/alunoProfessorRoutes');
+const inviteRoutes = require('./routes/inviteRoutes');
 
 const app = express();
-app.use(cors());
+
+// Configuração do CORS
+app.use(cors({
+  origin: ['http://localhost:3001', 'http://localhost:3000'],
+  credentials: true
+}));
+
 app.use(express.json({ strict: false }));
 
 app.use('/api/auth', authRoutes);
@@ -32,5 +39,6 @@ app.use('/api/assinaturas', assinaturaRoutes);
 app.use('/api/aulas', aulaRoutes);
 app.use('/api/agendamentos', agendamentoRoutes);  
 app.use('/api', alunoProfessorRoutes);
+app.use('/api', inviteRoutes);
 
 module.exports = app;

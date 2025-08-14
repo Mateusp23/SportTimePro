@@ -67,38 +67,77 @@ exports.login = async (req, res) => {
 };
 
 exports.registerAluno = async (req, res) => {
-  const { code, nome, email, senha } = req.body;
+  const { nome, email, senha, inviteCode, professorId } = req.body;
 
   try {
+    // Validar o convite primeiro
     const cliente = await prisma.cliente.findFirst({
-      where: { inviteCode: code }
+      where: { inviteCode }
     });
 
     if (!cliente) {
       return res.status(400).json({ message: 'Código de convite inválido.' });
     }
 
+    // Verificar se o professor existe e pertence ao mesmo cliente
+    const professor = await prisma.usuario.findFirst({
+      where: {
+        id: professorId,
+        clienteId: cliente.id,
+        roles: { has: 'PROFESSOR' }
+      }
+    });
+
+    if (!professor) {
+      return res.status(400).json({ message: 'Professor não encontrado ou não autorizado.' });
+    }
+
+    // Verificar se o email já existe no cliente
+    const usuarioExistente = await prisma.usuario.findFirst({
+      where: { email, clienteId: cliente.id }
+    });
+    
+    if (usuarioExistente) {
+      return res.status(400).json({ message: 'Este e-mail já está registrado nesta academia.' });
+    }
+
     const hash = await bcrypt.hash(senha, 10);
 
+    // Criar o aluno
     const aluno = await prisma.usuario.create({
       data: {
         nome,
         email,
         senhaHash: hash,
         roles: ['ALUNO'],
+        clienteId: cliente.id,
+        emailConfirmado: true // Alunos não precisam confirmar email
+      }
+    });
+
+    // Criar o vínculo aluno-professor
+    await prisma.alunoProfessor.create({
+      data: {
+        alunoId: aluno.id,
+        professorId: professor.id,
         clienteId: cliente.id
       }
     });
 
     return res.json({
-      message: 'Aluno cadastrado com sucesso',
-      aluno
+      message: 'Aluno cadastrado com sucesso e vinculado ao professor',
+      aluno: {
+        id: aluno.id,
+        nome: aluno.nome,
+        email: aluno.email
+      }
     });
   } catch (err) {
     if (err.code === 'P2002') {
       return res.status(400).json({ message: 'Email já cadastrado.' });
     }
-    return res.status(500).json({ message: err.message });
+    console.error('Erro ao registrar aluno:', err);
+    return res.status(500).json({ message: 'Erro interno do servidor.' });
   }
 };
 
