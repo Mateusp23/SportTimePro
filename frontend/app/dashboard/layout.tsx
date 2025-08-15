@@ -17,6 +17,7 @@ import {
   X,
   Bell
 } from "lucide-react";
+import { useUserInfo } from "@/app/hooks/useUserInfo";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -25,6 +26,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const logout = useAuthStore((state) => state.logout);
   const user = useAuthStore((state) => state.user);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { userInfo } = useUserInfo();
 
   useEffect(() => {
     if (!token) router.push("/auth/login");
@@ -49,7 +51,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } lg:relative lg:translate-x-0`}>
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-blue-600">SportTimePro</h2>
+          <h2 className="text-lg font-bold text-blue-600">SportTimePro</h2>
           <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden p-2 hover:bg-gray-100 rounded-lg"
@@ -217,7 +219,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   {pathname === '/dashboard' && 'Dashboard'}
                 </h1>
                 <p className="text-sm text-gray-600 mt-1">
-                  Bem-vindo ao SportTimePro, {user?.nome || 'Usuário'}! 👋
+                  Bem-vindo ao SportTimePro, {userInfo?.nome || 'Usuário'}! 👋
                 </p>
               </div>
             </div>

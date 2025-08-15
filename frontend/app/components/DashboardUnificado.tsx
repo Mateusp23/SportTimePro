@@ -1,38 +1,33 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useAuthStore } from "@/app/store/authStore";
 import { useRouter } from "next/navigation";
-import api from "@/app/lib/api";
-
-interface UserInfo {
-  id: string;
-  nome: string;
-  email: string;
-  roles: string[];
-  clienteId: string;
-}
+import { useUserInfo } from "@/app/hooks/useUserInfo";
 
 export default function DashboardUnificado() {
   const { user } = useAuthStore();
   const router = useRouter();
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-
-  useEffect(() => {
-    carregarInformacoesUsuario();
-  }, []);
-
-  const carregarInformacoesUsuario = async () => {
-    try {
-      const response = await api.get("/auth/me");
-      setUserInfo(response.data);
-    } catch (error) {
-      console.error("Erro ao carregar informações do usuário:", error);
-    }
-  };
+  const { userInfo, loading, error } = useUserInfo();
 
   // Conteúdo específico para alunos
   const renderConteudoAluno = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <span className="ml-3 text-gray-600">Carregando...</span>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="text-center py-8 text-red-600">
+          <p>Erro ao carregar dados: {error}</p>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-6">
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-8 rounded-lg shadow-lg">
@@ -97,6 +92,23 @@ export default function DashboardUnificado() {
 
   // Conteúdo específico para professores/admin
   const renderConteudoProfessor = () => {
+    if (loading) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+          <span className="ml-3 text-gray-600">Carregando...</span>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="text-center py-8 text-red-600">
+          <p>Erro ao carregar dados: {error}</p>
+        </div>
+      );
+    }
+
     return (
       <div className="space-y-6">
         <div className="bg-gradient-to-r from-green-500 to-blue-600 text-white p-8 rounded-lg shadow-lg">

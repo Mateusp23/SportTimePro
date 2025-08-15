@@ -66,7 +66,6 @@ export default function AulasPage() {
 
   return (
     <div className="bg-white p-6 rounded shadow">
-      <h2 className="text-2xl font-heading font-bold mb-4">Gerenciar Aulas</h2>
       <button
         className="bg-primary text-white px-4 py-2 rounded mb-4 hover:bg-primary/80 transition-colors cursor-pointer"
         onClick={handleOpenModal}

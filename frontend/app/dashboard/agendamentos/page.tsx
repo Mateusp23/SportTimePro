@@ -150,8 +150,6 @@ export default function AgendamentosPage() {
     });
   }, [filteredAulas]);
 
-  
-
   return (
     <div className="bg-white p-6 rounded shadow">
       <h2 className="text-2xl font-heading font-bold mb-4">Agendamentos</h2>
