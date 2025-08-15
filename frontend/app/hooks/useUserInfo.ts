@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import api from "@/app/lib/api";
 
 export interface UserInfo {
@@ -14,7 +14,7 @@ export function useUserInfo() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const carregarInformacoesUsuario = async () => {
+  const carregarInformacoesUsuario = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -26,15 +26,15 @@ export function useUserInfo() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const refreshUserInfo = () => {
+  const refreshUserInfo = useCallback(() => {
     carregarInformacoesUsuario();
-  };
+  }, [carregarInformacoesUsuario]);
 
   useEffect(() => {
     carregarInformacoesUsuario();
-  }, []);
+  }, [carregarInformacoesUsuario]);
 
   return {
     userInfo,

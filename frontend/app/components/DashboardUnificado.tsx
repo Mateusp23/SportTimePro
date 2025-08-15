@@ -3,15 +3,41 @@
 import { useAuthStore } from "@/app/store/authStore";
 import { useRouter } from "next/navigation";
 import { useUserInfo } from "@/app/hooks/useUserInfo";
+import { useDashboardStats } from "@/app/hooks/useDashboardStats";
+import { useEffect, useRef } from "react";
 
 export default function DashboardUnificado() {
   const { user } = useAuthStore();
   const router = useRouter();
-  const { userInfo, loading, error } = useUserInfo();
+  const { userInfo, loading: loadingUser, error: errorUser } = useUserInfo();
+  const { 
+    stats, 
+    loading: loadingStats, 
+    error: errorStats,
+    carregarEstatisticas,
+    carregarEstatisticasAluno
+  } = useDashboardStats();
+
+  // Ref para controlar se já carregou as estatísticas
+  const hasLoadedStats = useRef(false);
+
+  // Carregar estatísticas baseado no tipo de usuário (apenas uma vez)
+  useEffect(() => {
+    // Só carrega se o usuário estiver disponível e ainda não carregou
+    if (user?.roles && !hasLoadedStats.current) {
+      hasLoadedStats.current = true;
+      
+      if (user.roles.includes('ALUNO')) {
+        carregarEstatisticasAluno();
+      } else if (user.roles.includes('PROFESSOR') || user.roles.includes('ADMIN')) {
+        carregarEstatisticas(user.id);
+      }
+    }
+  }, [user?.roles, user?.id, carregarEstatisticas, carregarEstatisticasAluno]);
 
   // Conteúdo específico para alunos
   const renderConteudoAluno = () => {
-    if (loading) {
+    if (loadingUser || loadingStats) {
       return (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -20,10 +46,10 @@ export default function DashboardUnificado() {
       );
     }
 
-    if (error) {
+    if (errorUser || errorStats) {
       return (
         <div className="text-center py-8 text-red-600">
-          <p>Erro ao carregar dados: {error}</p>
+          <p>Erro ao carregar dados: {errorUser || errorStats}</p>
         </div>
       );
     }
@@ -33,7 +59,7 @@ export default function DashboardUnificado() {
         <div className="bg-gradient-to-r from-blue-500 to-purple-600 text-white p-8 rounded-lg shadow-lg">
           <div className="text-center">
             <h2 className="text-3xl font-bold mb-2">
-              Olá, {userInfo?.nome || 'Aluno'}! 👋
+              Olá, {userInfo?.nome || 'Aluno'}!
             </h2>
             <p className="text-xl opacity-90">
               Bem-vindo ao seu dashboard personalizado
@@ -44,20 +70,28 @@ export default function DashboardUnificado() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Próximas Aulas</h3>
-            <p className="text-3xl font-bold text-purple-600">0</p>
+            <p className="text-3xl font-bold text-purple-600">{stats?.proximasAulas || 0}</p>
             <p className="text-sm text-gray-600">aulas agendadas</p>
           </div>
           
           <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Professor</h3>
-            <p className="text-lg font-medium text-gray-800">Não definido</p>
-            <p className="text-sm text-gray-600">Aguardando aprovação</p>
+            <p className="text-lg font-medium text-gray-800">
+              {stats?.professorVinculado || 'Não definido'}
+            </p>
+            <p className="text-sm text-gray-600">
+              {stats?.professorVinculado ? 'Vinculado' : 'Aguardando aprovação'}
+            </p>
           </div>
           
           <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Academia</h3>
-            <p className="text-lg font-medium text-gray-800">Não definida</p>
-            <p className="text-sm text-gray-600">Aguardando aprovação</p>
+            <p className="text-lg font-medium text-gray-800">
+              {stats?.academiaVinculada || 'Não definida'}
+            </p>
+            <p className="text-sm text-gray-600">
+              {stats?.academiaVinculada ? 'Vinculada' : 'Aguardando aprovação'}
+            </p>
           </div>
         </div>
 
@@ -92,7 +126,7 @@ export default function DashboardUnificado() {
 
   // Conteúdo específico para professores/admin
   const renderConteudoProfessor = () => {
-    if (loading) {
+    if (loadingUser || loadingStats) {
       return (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
@@ -101,10 +135,10 @@ export default function DashboardUnificado() {
       );
     }
 
-    if (error) {
+    if (errorUser || errorStats) {
       return (
         <div className="text-center py-8 text-red-600">
-          <p>Erro ao carregar dados: {error}</p>
+          <p>Erro ao carregar dados: {errorUser || errorStats}</p>
         </div>
       );
     }
@@ -114,7 +148,7 @@ export default function DashboardUnificado() {
         <div className="bg-gradient-to-r from-green-500 to-blue-600 text-white p-8 rounded-lg shadow-lg">
           <div className="text-center">
             <h2 className="text-3xl font-bold mb-2">
-              Olá, {userInfo?.nome || 'Professor'}! 👋
+              Olá, {userInfo?.nome || 'Professor'}!
             </h2>
             <p className="text-xl opacity-90">
               {user?.roles.includes('ADMIN') ? 'Dashboard Administrativo' : 'Dashboard do Professor'}
@@ -125,19 +159,19 @@ export default function DashboardUnificado() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Aulas Ativas</h3>
-            <p className="text-3xl font-bold text-green-600">0</p>
+            <p className="text-3xl font-bold text-green-600">{stats?.aulasAtivas || 0}</p>
             <p className="text-sm text-gray-600">aulas programadas</p>
           </div>
           
           <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Alunos</h3>
-            <p className="text-3xl font-bold text-blue-600">0</p>
+            <p className="text-3xl font-bold text-blue-600">{stats?.totalAlunos || 0}</p>
             <p className="text-sm text-gray-600">alunos ativos</p>
           </div>
           
           <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-800 mb-2">Solicitações</h3>
-            <p className="text-3xl font-bold text-orange-600">0</p>
+            <p className="text-3xl font-bold text-orange-600">{stats?.solicitacoesPendentes || 0}</p>
             <p className="text-sm text-gray-600">pendentes</p>
           </div>
         </div>
