@@ -1,4 +1,4 @@
-export type Role = 'ADMIN' | 'PROFESSOR' | 'CLIENTE';
+export type Role = 'ADMIN' | 'PROFESSOR' | 'CLIENTE' | 'ALUNO';
 
 export interface JwtClaims {
   userId: string;

@@ -1,8 +1,7 @@
 "use client";
 
 import { useAuthStore } from "@/app/store/authStore";
-import DashboardAluno from "@/app/components/DashboardAluno";
-import DashboardProfessor from "@/app/components/DashboardProfessor";
+import DashboardUnificado from "@/app/components/DashboardUnificado";
 
 export default function DashboardPage() {
   const { user } = useAuthStore();
@@ -15,27 +14,5 @@ export default function DashboardPage() {
     );
   }
 
-  // Renderizar dashboard baseado no tipo de usuário
-  if (user.roles.includes('ALUNO')) {
-    return <DashboardAluno />;
-  }
-
-  if (user.roles.includes('PROFESSOR') || user.roles.includes('ADMIN')) {
-    return <DashboardProfessor />;
-  }
-
-  // Fallback para outros tipos de usuário
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">
-          Bem-vindo, {user.nome}! 👋
-        </h1>
-        <p className="text-gray-600">Dashboard do SportTimePro</p>
-      </div>
-      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-        <p className="text-gray-600">Tipo de usuário não reconhecido.</p>
-      </div>
-    </div>
-  );
+  return <DashboardUnificado />;
 }
