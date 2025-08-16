@@ -169,9 +169,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 <BookOpen size={20} /> Minhas Aulas
               </Link>
               <Link 
-                href="/dashboard/agendamentos" 
+                href="/dashboard/agendamentos-aluno" 
                 className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
-                  isActive('/dashboard/agendamentos') 
+                  isActive('/dashboard/agendamentos-aluno') 
                     ? 'bg-blue-100 text-blue-700 border border-blue-200' 
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}

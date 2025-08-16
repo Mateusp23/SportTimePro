@@ -98,7 +98,7 @@ export default function DashboardUnificado() {
         {/* Seção de Ações Rápidas para Alunos */}
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            🚀 Ações Rápidas
+            Ações Rápidas
           </h2>
           <p className="text-gray-600 mb-4">
             Acesse rapidamente as funcionalidades principais do sistema.
@@ -179,7 +179,7 @@ export default function DashboardUnificado() {
         {/* Seção de Ações Rápidas */}
         <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
           <h2 className="text-xl font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            🚀 Ações Rápidas
+            Ações Rápidas
           </h2>
           <p className="text-gray-600 mb-4">
             Acesse rapidamente as funcionalidades principais do sistema.
