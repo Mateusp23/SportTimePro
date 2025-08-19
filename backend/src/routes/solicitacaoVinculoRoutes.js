@@ -15,4 +15,7 @@ router.put('/:id/responder', auth(['PROFESSOR', 'ADMIN']), ctrl.responderSolicit
 // Alunos podem verificar o status do seu vínculo
 router.get('/status', auth(['ALUNO']), ctrl.verificarStatusVinculo);
 
+// Alunos podem listar suas solicitações
+router.get('/aluno', auth(['ALUNO']), ctrl.listarSolicitacoesAluno);
+
 module.exports = router;

@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import InputField from "@/app/components/InputField";
 import { useAlunoRegistration } from "@/app/hooks/useAlunoRegistration";
 import { Mail, Lock, User, GraduationCap } from "lucide-react";
 
-export default function RegisterAlunoPage() {
+function RegisterAlunoContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { loading, error, validateInvite, registerAluno, clearError } = useAlunoRegistration();
@@ -222,5 +222,20 @@ export default function RegisterAlunoPage() {
         </p>
       </form>
     </div>
+  );
+}
+
+export default function RegisterAlunoPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-primary/10 to-secondary/10 px-4">
+        <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-700">Carregando...</h2>
+        </div>
+      </div>
+    }>
+      <RegisterAlunoContent />
+    </Suspense>
   );
 }

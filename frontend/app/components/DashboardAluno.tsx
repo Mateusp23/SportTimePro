@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useAuthStore } from "@/app/store/authStore";
-import { Calendar, Clock, User, Building, CheckCircle, AlertCircle, Home, BookOpen, Users, History, Menu, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Calendar, Clock, User, Building, CheckCircle, AlertCircle, Home, BookOpen, Users, History, Menu, X, FileText } from "lucide-react";
 import api from "@/app/lib/api";
+
 
 interface Aula {
   id: string;
@@ -51,10 +53,11 @@ type DashboardSection = 'inicio' | 'aulas' | 'professores' | 'agendamentos' | 'h
 
 export default function DashboardAluno() {
   const { user } = useAuthStore();
+  const router = useRouter();
   const [activeSection, setActiveSection] = useState<DashboardSection>('inicio');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
-  const [userInfo, setUserInfo] = useState<any>(null);
+  const [userInfo, setUserInfo] = useState<{ nome: string; email: string } | null>(null);
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [professores, setProfessores] = useState<Professor[]>([]);
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
@@ -157,6 +160,15 @@ export default function DashboardAluno() {
     }
   };
 
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case 'PENDENTE': return 'Aguardando resposta';
+      case 'APROVADA': return 'Aprovado';
+      case 'REJEITADA': return 'Recusado';
+      default: return status;
+    }
+  };
+
   const renderInicio = () => (
     <div className="space-y-6">
       {/* Mensagem de Boas-vindas */}
@@ -230,6 +242,56 @@ export default function DashboardAluno() {
           </p>
         </div>
       )}
+
+      {/* Seção de Solicitações de Vínculo */}
+      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <FileText className="text-purple-600" size={24} />
+            Solicitações de Vínculo
+          </h2>
+          <button
+            onClick={() => router.push('/dashboard/solicitacoes-aluno')}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition flex items-center gap-2"
+          >
+            <FileText size={16} />
+            Gerenciar Solicitações
+          </button>
+        </div>
+        
+        <p className="text-gray-600 mb-4">
+          {statusVinculo ? (
+            <>
+              Você possui uma solicitação de vínculo com status: <strong>{getStatusText(statusVinculo.status)}</strong>
+            </>
+          ) : (
+            "Você ainda não possui solicitações de vínculo. Clique no botão acima para criar sua primeira solicitação."
+          )}
+        </p>
+
+        {statusVinculo && (
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-600">
+                  <strong>Professor:</strong> {statusVinculo.professorNome}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Academia:</strong> {statusVinculo.academiaNome}
+                </p>
+                <p className="text-sm text-gray-600">
+                  <strong>Status:</strong> {getStatusText(statusVinculo.status)}
+                </p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-500">
+                  {new Date(statusVinculo.criadoEm).toLocaleDateString('pt-BR')}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Cards de Informações */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -571,6 +633,14 @@ export default function DashboardAluno() {
           >
             <History size={20} />
             Histórico
+          </button>
+          
+          <button
+            onClick={() => router.push('/dashboard/solicitacoes-aluno')}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition text-gray-700 hover:bg-gray-100"
+          >
+            <FileText size={20} />
+            Minhas Solicitações
           </button>
         </nav>
       </div>

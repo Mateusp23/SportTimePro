@@ -62,7 +62,7 @@ export default function DashboardUnificado() {
               Olá, {userInfo?.nome || 'Aluno'}!
             </h2>
             <p className="text-xl opacity-90">
-              Bem-vindo ao seu dashboard personalizado
+              aqui você pode acompanhar suas aulas, professores e agendamentos
             </p>
           </div>
         </div>
@@ -103,7 +103,7 @@ export default function DashboardUnificado() {
           <p className="text-gray-600 mb-4">
             Acesse rapidamente as funcionalidades principais do sistema.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <button
               onClick={() => router.push('/dashboard/aulas-aluno')}
               className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-left"
@@ -117,6 +117,13 @@ export default function DashboardUnificado() {
             >
               <h3 className="font-medium text-gray-800 mb-1">Meus Agendamentos</h3>
               <p className="text-sm text-gray-600">Visualizar e gerenciar seus agendamentos</p>
+            </button>
+            <button
+              onClick={() => router.push('/dashboard/solicitacoes-aluno')}
+              className="p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition text-left"
+            >
+              <h3 className="font-medium text-gray-800 mb-1">Minhas Solicitações</h3>
+              <p className="text-sm text-gray-600">Acompanhar status das solicitações de vínculo</p>
             </button>
           </div>
         </div>

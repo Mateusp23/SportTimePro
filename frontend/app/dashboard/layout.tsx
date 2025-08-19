@@ -178,6 +178,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               >
                 <CalendarDays size={20} /> Meus Agendamentos
               </Link>
+              <Link 
+                href="/dashboard/solicitacoes-aluno" 
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+                  isActive('/dashboard/solicitacoes-aluno') 
+                    ? 'bg-blue-100 text-blue-700 border border-blue-200' 
+                    : 'text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <Bell size={20} /> Minhas Solicitações
+              </Link>
             </>
           )}
         </nav>
@@ -216,6 +226,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   {pathname === '/dashboard/locais' && 'Gerenciar Locais'}
                   {pathname === '/dashboard/solicitacoes' && 'Solicitações de Vínculo'}
                   {pathname === '/dashboard/aulas-aluno' && 'Minhas Aulas'}
+                  {pathname === '/dashboard/agendamentos-aluno' && 'Meus Agendamentos'}
+                  {pathname === '/dashboard/solicitacoes-aluno' && 'Minhas Solicitações'}
                   {pathname === '/dashboard' && 'Dashboard'}
                 </h1>
                 <p className="text-sm text-gray-600 mt-1">

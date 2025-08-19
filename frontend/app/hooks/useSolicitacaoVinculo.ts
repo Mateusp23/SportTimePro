@@ -23,8 +23,8 @@ export const useSolicitacaoVinculo = () => {
       
       const response = await api.post("/solicitacoes-vinculo", data);
       return response.data;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || "Erro ao criar solicitação";
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao criar solicitação";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -39,8 +39,24 @@ export const useSolicitacaoVinculo = () => {
       
       const response = await api.get("/solicitacoes-vinculo");
       return response.data;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || "Erro ao listar solicitações";
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao listar solicitações";
+      setError(errorMessage);
+      throw new Error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const listarSolicitacoesAluno = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await api.get("/solicitacoes-vinculo/aluno");
+      return response.data;
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao listar solicitações do aluno";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -55,8 +71,8 @@ export const useSolicitacaoVinculo = () => {
       
       const response = await api.put(`/solicitacoes-vinculo/${id}/responder`, data);
       return response.data;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || "Erro ao responder solicitação";
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao responder solicitação";
       setError(errorMessage);
       throw new Error(errorMessage);
     } finally {
@@ -71,6 +87,7 @@ export const useSolicitacaoVinculo = () => {
     error,
     criarSolicitacao,
     listarSolicitacoes,
+    listarSolicitacoesAluno,
     responderSolicitacao,
     clearError
   };

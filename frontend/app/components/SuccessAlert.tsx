@@ -1,4 +1,4 @@
-import Alert from "./ValidationAlert";
+import Alert from "./Alert";
 
 interface SuccessAlertProps {
   message: string;

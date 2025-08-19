@@ -27,6 +27,7 @@ export default function SolicitacoesVinculo() {
   const [loading, setLoading] = useState(true);
   const [resposta, setResposta] = useState("");
   const [respondendoId, setRespondendoId] = useState<string | null>(null);
+  const [filtroStatus, setFiltroStatus] = useState<'TODOS' | 'PENDENTE' | 'APROVADA' | 'REJEITADA'>('TODOS');
 
   const { listarSolicitacoes, responderSolicitacao, error } = useSolicitacaoVinculo();
 
@@ -108,7 +109,24 @@ export default function SolicitacoesVinculo() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Solicitações de Vínculo</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-bold text-gray-800">Solicitações de Vínculo</h2>
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-600">
+            {solicitacoes.filter(s => s.status === 'PENDENTE').length} pendentes
+          </div>
+          <select
+            value={filtroStatus}
+            onChange={(e) => setFiltroStatus(e.target.value as any)}
+            className="px-3 py-1 border border-gray-300 rounded-lg text-sm"
+          >
+            <option value="TODOS">Todos os status</option>
+            <option value="PENDENTE">Pendentes</option>
+            <option value="APROVADA">Aprovadas</option>
+            <option value="REJEITADA">Rejeitadas</option>
+          </select>
+        </div>
+      </div>
 
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -117,7 +135,16 @@ export default function SolicitacoesVinculo() {
       )}
 
       <div className="space-y-4">
-        {solicitacoes.map((solicitacao) => (
+        {solicitacoes
+          .filter(solicitacao => filtroStatus === 'TODOS' || solicitacao.status === filtroStatus)
+          .length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-600">Nenhuma solicitação encontrada para o filtro selecionado.</p>
+          </div>
+        ) : (
+          solicitacoes
+            .filter(solicitacao => filtroStatus === 'TODOS' || solicitacao.status === filtroStatus)
+            .map((solicitacao) => (
           <div
             key={solicitacao.id}
             className="border border-gray-200 rounded-lg p-4 bg-white"
@@ -212,7 +239,8 @@ export default function SolicitacoesVinculo() {
               </div>
             )}
           </div>
-        ))}
+        ))
+        )}
       </div>
     </div>
   );

@@ -31,17 +31,24 @@ exports.criarSolicitacao = async (req, res) => {
       return res.status(404).json({ message: 'Professor não encontrado.' });
     }
 
-    // Verificar se já existe uma solicitação pendente
+    // Verificar se já existe uma solicitação pendente ou aprovada
     const solicitacaoExistente = await prisma.solicitacaoVinculo.findFirst({
       where: {
         alunoId: userId,
         professorId,
-        clienteId: aluno.clienteId
+        clienteId: aluno.clienteId,
+        status: {
+          in: ['PENDENTE', 'APROVADA']
+        }
       }
     });
 
     if (solicitacaoExistente) {
-      return res.status(400).json({ message: 'Já existe uma solicitação para este professor.' });
+      return res.status(400).json({ 
+        message: solicitacaoExistente.status === 'APROVADA' 
+          ? 'Você já possui um vínculo aprovado com este professor.' 
+          : 'Já existe uma solicitação pendente para este professor.' 
+      });
     }
 
     // Criar solicitação
@@ -205,6 +212,49 @@ exports.verificarStatusVinculo = async (req, res) => {
     });
   } catch (error) {
     console.error('Erro ao verificar status do vínculo:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
+// Listar todas as solicitações do aluno
+exports.listarSolicitacoesAluno = async (req, res) => {
+  const { userId, clienteId } = req.user;
+  
+  try {
+    const aluno = await prisma.usuario.findFirst({ 
+      where: { id: userId, roles: { has: 'ALUNO' } } 
+    });
+    
+    if (!aluno) {
+      return res.status(403).json({ message: 'Apenas alunos podem listar suas solicitações.' });
+    }
+
+    const solicitacoes = await prisma.solicitacaoVinculo.findMany({
+      where: { 
+        alunoId: userId, 
+        clienteId: aluno.clienteId 
+      },
+      include: {
+        professor: {
+          select: {
+            id: true,
+            nome: true,
+            email: true
+          }
+        },
+        cliente: {
+          select: {
+            id: true,
+            nome: true
+          }
+        }
+      },
+      orderBy: { criadoEm: 'desc' }
+    });
+
+    res.json(solicitacoes);
+  } catch (error) {
+    console.error('Erro ao listar solicitações do aluno:', error);
     res.status(500).json({ message: 'Erro interno do servidor.' });
   }
 };

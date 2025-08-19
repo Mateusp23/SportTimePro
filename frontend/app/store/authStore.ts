@@ -31,6 +31,7 @@ const initialUser = initialToken
       id: claims.userId,
       clienteId: claims.clienteId,
       roles: claims.roles ?? [],
+      nome: 'Usuário', // Nome padrão, será atualizado quando carregar dados do usuário
     } as AppUser;
   })()
   : null;
@@ -54,6 +55,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           id: claims.userId,
           clienteId: claims.clienteId,
           roles: claims.roles ?? [],
+          nome: 'Usuário', // Nome padrão, será atualizado quando carregar dados do usuário
         };
       }
     }
