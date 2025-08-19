@@ -63,12 +63,18 @@ exports.agendarAula = async (req, res) => {
 exports.getAlunosPorAula = async (req, res) => {
   const { aulaId } = req.params;
   const { clienteId, roles } = req.user;
+  const { page = "1", pageSize = "20", search = "", status = "ATIVO" } = req.query;
 
   if (!roles.includes('ADMIN') && !roles.includes('PROFESSOR')) {
     return res.status(403).json({ message: 'Permissão negada' });
   }
 
   try {
+    // Paginação segura
+    const take = Math.min(Math.max(parseInt(pageSize, 10) || 20, 1), 100);
+    const currPage = Math.max(parseInt(page, 10) || 1, 1);
+    const skip = (currPage - 1) * take;
+
     // Busca da aula (garante que pertence ao cliente logado)
     const aula = await prisma.aula.findFirst({
       where: {
@@ -91,12 +97,30 @@ exports.getAlunosPorAula = async (req, res) => {
       return res.status(404).json({ message: 'Aula não encontrada.' });
     }
 
-    // Buscar agendamentos ativos
+    // Montar filtros para agendamentos
+    const where = {
+      aulaId,
+      status: String(status)
+    };
+
+    // Filtro de busca por nome ou email do aluno
+    if (search) {
+      where.aluno = {
+        OR: [
+          { nome: { contains: String(search), mode: 'insensitive' } },
+          { email: { contains: String(search), mode: 'insensitive' } }
+        ]
+      };
+    }
+
+    // Count total para paginação
+    const total = await prisma.agendamento.count({ where });
+
+    // Buscar agendamentos com paginação
     const agendamentos = await prisma.agendamento.findMany({
-      where: {
-        aulaId,
-        status: 'ATIVO'
-      },
+      where,
+      skip,
+      take,
       include: {
         aluno: {
           select: {
@@ -105,22 +129,33 @@ exports.getAlunosPorAula = async (req, res) => {
             email: true
           }
         }
+      },
+      orderBy: {
+        criadoEm: 'desc'
       }
     });
 
-    const alunos = agendamentos.map(item => ({
+    // Formatar dados para o frontend
+    const data = agendamentos.map(item => ({
       id: item.aluno.id,
       nome: item.aluno.nome,
-      email: item.aluno.email
+      email: item.aluno.email,
+      agendamentoId: item.id,
+      status: item.status,
+      criadoEm: item.criadoEm
     }));
 
     res.json({
       aula,
-      totalAgendados: alunos.length,
-      alunos
+      data,
+      page: currPage,
+      pageSize: take,
+      total,
+      totalPages: Math.ceil(total / take)
     });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Erro ao buscar alunos por aula:', err);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
   }
 };
 
