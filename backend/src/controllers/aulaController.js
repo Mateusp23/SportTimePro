@@ -434,3 +434,132 @@ exports.listarAulasAluno = async (req, res) => {
     res.status(500).json({ message: 'Erro interno do servidor.' });
   }
 };
+
+// Nova função para listar aulas dos professores vinculados ao aluno
+exports.listarAulasProfessoresVinculados = async (req, res) => {
+  const { userId, clienteId } = req.user;
+  const { dateStart, dateEnd, unidadeId, localId, modalidade } = req.query;
+  
+  try {
+    // Verificar se o usuário é um aluno
+    const aluno = await prisma.usuario.findFirst({
+      where: { id: userId, roles: { has: 'ALUNO' } }
+    });
+    
+    if (!aluno) {
+      return res.status(403).json({ message: 'Apenas alunos podem acessar esta funcionalidade.' });
+    }
+
+    // Buscar professores vinculados ao aluno
+    const vinculos = await prisma.alunoProfessor.findMany({
+      where: {
+        alunoId: userId,
+        clienteId: clienteId
+      },
+      include: {
+        professor: {
+          select: {
+            id: true,
+            nome: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    if (vinculos.length === 0) {
+      return res.json({
+        items: [],
+        page: 1,
+        pageSize: 50,
+        total: 0,
+        totalPages: 0,
+        message: 'Você não possui vínculos com professores ainda.'
+      });
+    }
+
+    // IDs dos professores vinculados
+    const professoresIds = vinculos.map(v => v.professor.id);
+
+    // Montar filtros para as aulas
+    const where = {
+      clienteId: clienteId,
+      professorId: { in: professoresIds },
+      dataHoraInicio: { gte: new Date() } // Apenas aulas futuras
+    };
+
+    // Filtros opcionais
+    if (dateStart && dateEnd) {
+      const gte = new Date(`${dateStart}T00:00:00.000Z`);
+      const lte = new Date(`${dateEnd}T23:59:59.999Z`);
+      where.dataHoraInicio = { 
+        gte: new Date() > gte ? new Date() : gte, // Não mostrar aulas passadas
+        lte 
+      };
+    }
+
+    if (unidadeId) where.unidadeId = String(unidadeId);
+    if (localId) where.localId = String(localId);
+
+    if (modalidade) {
+      where.modalidade = {
+        contains: String(modalidade),
+        mode: "insensitive",
+      };
+    }
+
+    // Buscar aulas dos professores vinculados
+    const aulas = await prisma.aula.findMany({
+      where,
+      select: {
+        id: true,
+        modalidade: true,
+        dataHoraInicio: true,
+        dataHoraFim: true,
+        vagasTotais: true,
+        professorId: true,
+        unidadeId: true,
+        localId: true,
+        professor: { select: { nome: true, email: true } },
+        unidade: { select: { nome: true } },
+        local: { select: { nome: true } },
+        _count: { select: { agendamentos: true } },
+      },
+      orderBy: { dataHoraInicio: "asc" },
+    });
+
+    // Verificar quais aulas o aluno já está agendado
+    const aulasComAgendamento = await Promise.all(
+      aulas.map(async (aula) => {
+        const agendamento = await prisma.agendamento.findFirst({
+          where: {
+            aulaId: aula.id,
+            alunoId: userId
+          }
+        });
+        
+        return {
+          ...aula,
+          agendado: !!agendamento
+        };
+      })
+    );
+
+    res.json({
+      items: aulasComAgendamento,
+      page: 1,
+      pageSize: aulasComAgendamento.length,
+      total: aulasComAgendamento.length,
+      totalPages: 1,
+      professoresVinculados: vinculos.map(v => ({
+        id: v.professor.id,
+        nome: v.professor.nome,
+        email: v.professor.email
+      }))
+    });
+
+  } catch (error) {
+    console.error('Erro ao listar aulas dos professores vinculados:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};

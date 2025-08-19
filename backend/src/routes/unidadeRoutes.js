@@ -8,9 +8,9 @@ const {
 } = require('../controllers/unidadeController');
 const authMiddleware = require('../middlewares/authMiddleware');
 
-// Apenas ADMIN pode criar, atualizar ou deletar unidades
+// ADMIN pode gerenciar unidades, ALUNO pode apenas listar para filtros
 router.post('/', authMiddleware(['ADMIN']), createUnidade);
-router.get('/', authMiddleware(['ADMIN']), getUnidades);
+router.get('/', authMiddleware(['ADMIN', 'ALUNO', 'PROFESSOR']), getUnidades);
 router.put('/:id', authMiddleware(['ADMIN']), updateUnidade);
 router.delete('/:id', authMiddleware(['ADMIN']), deleteUnidade);
 

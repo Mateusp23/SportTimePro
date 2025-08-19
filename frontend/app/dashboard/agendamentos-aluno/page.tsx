@@ -15,7 +15,7 @@ type Aula = {
   localId: string;
   unidade?: { nome: string };
   local?: { nome: string };
-  professor?: { nome: string };
+  professor?: { nome: string; email: string };
   _count?: { agendamentos: number };
   agendado?: boolean; // Se o aluno está agendado nesta aula
 };
@@ -26,6 +26,12 @@ type Agendamento = {
   alunoId: string;
   status: 'CONFIRMADO' | 'PENDENTE' | 'CANCELADO';
   aula?: Aula;
+};
+
+type ProfessorVinculado = {
+  id: string;
+  nome: string;
+  email: string;
 };
 
 function startOfDay(d: Date) {
@@ -58,8 +64,10 @@ export default function AgendamentosAlunoPage() {
   const { unidades, locais } = useUnidadesLocais();
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [meusAgendamentos, setMeusAgendamentos] = useState<Agendamento[]>([]);
+  const [professoresVinculados, setProfessoresVinculados] = useState<ProfessorVinculado[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAgendamento, setIsLoadingAgendamento] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // filtros
   const [dateStart, setDateStart] = useState("");
@@ -69,30 +77,49 @@ export default function AgendamentosAlunoPage() {
   const [modalidade, setModalidade] = useState<string>("");
   const [filtroAgendamento, setFiltroAgendamento] = useState<"todas" | "agendadas" | "disponiveis">("todas");
 
-  // carregar aulas disponíveis e meus agendamentos
+  // carregar aulas dos professores vinculados e meus agendamentos
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
         setIsLoading(true);
+        setError(null);
         
-        // Buscar aulas disponíveis
+        console.log("🔍 Carregando aulas dos professores vinculados...");
+        
+        // Buscar aulas dos professores vinculados
         const [aulasResponse, agendamentosResponse] = await Promise.all([
-          api.get<{ items: Aula[] }>("/aulas", {
+          api.get<{ 
+            items: Aula[]; 
+            professoresVinculados: ProfessorVinculado[];
+            message?: string;
+          }>("/aulas/professores-vinculados", {
             params: { 
               dateStart: dateStart || new Date().toISOString().split('T')[0],
-              dateEnd: dateEnd || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+              dateEnd: dateEnd || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+              unidadeId: unidadeId || undefined,
+              localId: localId || undefined,
+              modalidade: modalidade || undefined
             }
           }),
           api.get<Agendamento[]>("/agendamentos/aluno").catch(() => ({ data: [] }))
         ]);
 
         if (alive) {
-          setAulas(aulasResponse.data.items);
+          console.log("📋 Aulas dos professores vinculados:", aulasResponse.data);
+          setAulas(aulasResponse.data.items || []);
+          setProfessoresVinculados(aulasResponse.data.professoresVinculados || []);
           setMeusAgendamentos(agendamentosResponse.data);
+          
+          // Mostrar mensagem se não há vínculos
+          if (aulasResponse.data.message) {
+            setError(aulasResponse.data.message);
+          }
         }
-      } catch (error) {
-        console.error("Erro ao carregar dados:", error);
+      } catch (error: unknown) {
+        console.error("❌ Erro ao carregar dados:", error);
+        const errorMessage = error instanceof Error ? error.message : "Erro ao carregar dados";
+        setError(errorMessage);
       } finally {
         if (alive) setIsLoading(false);
       }
@@ -100,7 +127,7 @@ export default function AgendamentosAlunoPage() {
     return () => {
       alive = false;
     };
-  }, [dateStart, dateEnd]);
+  }, [dateStart, dateEnd, unidadeId, localId, modalidade]);
 
   // quando trocar unidade, limpar local
   useEffect(() => {
@@ -118,34 +145,11 @@ export default function AgendamentosAlunoPage() {
     return Array.from(set).sort();
   }, [aulas]);
 
-  // Marcar aulas que o aluno está agendado
-  const aulasComAgendamento = useMemo(() => {
-    const agendamentosIds = new Set(meusAgendamentos.map(a => a.aulaId));
-    return aulas.map(aula => ({
-      ...aula,
-      agendado: agendamentosIds.has(aula.id)
-    }));
-  }, [aulas, meusAgendamentos]);
-
   const filteredAulas = useMemo(() => {
-    if (!aulasComAgendamento.length) return [];
+    if (!aulas.length) return [];
 
-    const start = dateStart ? startOfDay(new Date(dateStart)) : startOfDay(new Date());
-    const end = dateEnd ? endOfDay(new Date(dateEnd)) : endOfDay(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000));
-
-    return aulasComAgendamento
+    return aulas
       .filter((a) => {
-        const inicio = new Date(a.dataHoraInicio);
-        if (inicio < start || inicio > end) return false;
-
-        if (unidadeId && a.unidadeId !== unidadeId) return false;
-        if (localId && a.localId !== localId) return false;
-
-        if (modalidade) {
-          const aMod = (a.modalidade || "").toUpperCase().trim();
-          if (!aMod.includes(modalidade.toUpperCase().trim())) return false;
-        }
-
         // Filtrar por status de agendamento
         if (filtroAgendamento === "agendadas" && !a.agendado) return false;
         if (filtroAgendamento === "disponiveis" && a.agendado) return false;
@@ -156,7 +160,7 @@ export default function AgendamentosAlunoPage() {
         (a, b) =>
           new Date(a.dataHoraInicio).getTime() - new Date(b.dataHoraInicio).getTime()
       );
-  }, [aulasComAgendamento, dateStart, dateEnd, unidadeId, localId, modalidade, filtroAgendamento]);
+  }, [aulas, filtroAgendamento]);
 
   // agrupado por dia
   const grouped = useMemo(() => {
@@ -179,6 +183,8 @@ export default function AgendamentosAlunoPage() {
   const agendarAula = async (aulaId: string) => {
     try {
       setIsLoadingAgendamento(true);
+      setError(null);
+      
       await api.post("/agendamentos", { aulaId });
       
       // Recarregar agendamentos
@@ -193,7 +199,7 @@ export default function AgendamentosAlunoPage() {
     } catch (error: unknown) {
       console.error("Erro ao agendar aula:", error);
       const errorMessage = error instanceof Error ? error.message : "Erro ao agendar aula";
-      alert(errorMessage);
+      setError(errorMessage);
     } finally {
       setIsLoadingAgendamento(false);
     }
@@ -203,6 +209,7 @@ export default function AgendamentosAlunoPage() {
   const cancelarAgendamento = async (aulaId: string) => {
     try {
       setIsLoadingAgendamento(true);
+      setError(null);
       
       // Encontrar o agendamento
       const agendamento = meusAgendamentos.find(a => a.aulaId === aulaId);
@@ -222,7 +229,7 @@ export default function AgendamentosAlunoPage() {
     } catch (error: unknown) {
       console.error("Erro ao cancelar agendamento:", error);
       const errorMessage = error instanceof Error ? error.message : "Erro ao cancelar agendamento";
-      alert(errorMessage);
+      setError(errorMessage);
     } finally {
       setIsLoadingAgendamento(false);
     }
@@ -231,6 +238,32 @@ export default function AgendamentosAlunoPage() {
   return (
     <div className="bg-white p-6 rounded shadow">
       <h2 className="text-2xl font-heading font-bold mb-4">Meus Agendamentos</h2>
+
+      {/* Informações sobre professores vinculados */}
+      {professoresVinculados.length > 0 && (
+        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+          <h3 className="font-semibold text-blue-800 mb-2">
+            Professores Vinculados ({professoresVinculados.length})
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+            {professoresVinculados.map((professor) => (
+              <div key={professor.id} className="text-sm text-blue-700">
+                <strong>{professor.nome}</strong> • {professor.email}
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-blue-600 mt-2">
+            Você pode se agendar nas aulas destes professores.
+          </p>
+        </div>
+      )}
+
+      {/* Mensagem de erro */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
+          <p className="text-red-700">{error}</p>
+        </div>
+      )}
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-3 items-center mb-6">
@@ -313,15 +346,17 @@ export default function AgendamentosAlunoPage() {
       {isLoading ? (
         <div className="flex items-center gap-2 text-gray-500">
           <div className="animate-spin h-5 w-5 border-b-2 border-primary rounded-full" />
-          Carregando…
+          Carregando aulas dos professores vinculados…
         </div>
       ) : grouped.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-gray-500 mb-4">Nenhuma aula encontrada com os filtros aplicados.</p>
           <p className="text-sm text-gray-400">
-            {filtroAgendamento === "agendadas" 
-              ? "Você ainda não tem aulas agendadas neste período."
-              : "Não há aulas disponíveis neste período."
+            {professoresVinculados.length === 0 
+              ? "Você precisa estar vinculado a um professor para ver suas aulas."
+              : filtroAgendamento === "agendadas" 
+                ? "Você ainda não tem aulas agendadas neste período."
+                : "Não há aulas disponíveis neste período."
             }
           </p>
         </div>
