@@ -7,6 +7,8 @@ import { useUser } from "@/app/hooks/useUser";
 import EditarAulaModal from "@/app/components/EditarAulaModal";
 import { Aula } from "@/app/types/types";
 import { confirmAlert } from "@/app/utils/confirmAlert";
+import Table from "@/app/components/Table";
+import { Edit, Trash2, Plus } from "lucide-react";
 
 export default function AulasPage() {
   const [aulas, setAulas] = useState<Aula[]>([]);
@@ -14,17 +16,25 @@ export default function AulasPage() {
   const { user, isLoading: isLoadingUser } = useUser();
   const [aulaSelecionada, setAulaSelecionada] = useState<Aula | null>(null);
   const [showEditarModal, setShowEditarModal] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   const fetchAulas = async () => {
-    const res = await api.get("/aulas");
-    setAulas(res.data.items);
+    try {
+      setIsLoading(true);
+      const res = await api.get("/aulas");
+      setAulas(res.data.items);
+    } catch (error) {
+      console.error("Erro ao buscar aulas:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   useEffect(() => {
     fetchAulas();
   }, []);
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (aula: Aula) => {
     const ok = await confirmAlert({
       type: "warning",
       title: "Excluir aula",
@@ -35,43 +45,71 @@ export default function AulasPage() {
 
     if (!ok) return;
 
-    await api.delete(`/aulas/${id}`);
-    fetchAulas();
+    try {
+      await api.delete(`/aulas/${aula.id}`);
+      fetchAulas();
+    } catch (error) {
+      console.error("Erro ao excluir aula:", error);
+    }
   };
 
-  const handleEdit = (id: string) => {
-    console.log('🔍 handleEdit - ID recebido:', id);
-    const aula = aulas.find((a) => a.id === id);
-    if (!aula) {
-      console.log('❌ Aula não encontrada para o ID:', id);
-      return;
-    }
-
-    console.log('🔍 Aula encontrada:', aula);
+  const handleEdit = (aula: Aula) => {
     setAulaSelecionada(aula);
-    setShowEditarModal(true); // chama o modal exclusivo de edição
+    setShowEditarModal(true);
   };
 
   const handleOpenModal = () => {
     setShowModal(true);
   };
-  
-  useEffect(() => {
-    console.log('📊 Aulas atualizadas:', aulas);
-  }, [aulas]);
-  
-  useEffect(() => {
-    console.log('🔍 Estado do modal de edição:', { showEditarModal, aulaSelecionada });
-  }, [showEditarModal, aulaSelecionada]);
+
+  // Configuração das colunas da tabela
+  const columns = [
+    {
+      key: 'modalidade' as keyof Aula,
+      header: 'Modalidade',
+      sortable: true,
+    },
+    {
+      key: 'dataHoraInicio' as keyof Aula,
+      header: 'Data e Hora',
+      sortable: true,
+      accessor: (aula: Aula) => new Date(aula.dataHoraInicio).toLocaleString('pt-BR'),
+    },
+    {
+      key: 'vagasTotais' as keyof Aula,
+      header: 'Vagas',
+      sortable: true,
+    },
+  ];
+
+  // Configuração das ações da tabela
+  const actions = [
+    {
+      icon: Edit,
+      label: 'Editar aula',
+      onClick: handleEdit,
+      variant: 'primary' as const,
+    },
+    {
+      icon: Trash2,
+      label: 'Excluir aula',
+      onClick: handleDelete,
+      variant: 'danger' as const,
+    },
+  ];
 
   return (
     <div className="bg-white p-6 rounded shadow">
-      <button
-        className="bg-primary text-white px-4 py-2 rounded mb-4 hover:bg-primary/80 transition-colors cursor-pointer"
-        onClick={handleOpenModal}
-      >
-        + Nova Aula
-      </button>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-heading font-bold">Aulas</h2>
+        <button
+          className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/80 transition-colors cursor-pointer flex items-center gap-2"
+          onClick={handleOpenModal}
+        >
+          <Plus className="w-4 h-4" />
+          Nova Aula
+        </button>
+      </div>
 
       {showModal && (
         <NovaAulaModal
@@ -84,51 +122,20 @@ export default function AulasPage() {
         <EditarAulaModal
           show={showEditarModal}
           aula={aulaSelecionada}
-          onClose={() => {
-            console.log('🔍 onClose chamado - fechando modal');
-            console.log('🔍 Estado antes de fechar:', showEditarModal);
-            setShowEditarModal(false);
-            console.log('🔍 Estado após fechar:', false);
-          }}
-          onUpdated={() => {
-            console.log('🔍 onUpdated chamado - atualizando lista');
-            fetchAulas();
-          }}
+          onClose={() => setShowEditarModal(false)}
+          onUpdated={() => fetchAulas()}
         />
       )}
 
-      <table className="w-full  border">
-        <thead>
-          <tr className="w-full border bg-gray-50 border-gray-200 rounded-lg">
-            <th className="p-3 text-left font-medium text-gray-700 border-b">Modalidade</th>
-            <th className="p-3 text-left font-medium text-gray-700 border-b">Data</th>
-            <th className="p-3 text-left font-medium text-gray-700 border-b">Vagas</th>
-            <th className="p-3 text-left font-medium text-gray-700 border-b">Ações</th>
-          </tr>
-        </thead>
-        <tbody className="border border-gray-200 rounded-lg">
-          {aulas.map((aula: Aula) => (
-            <tr key={aula.id} className="hover:bg-gray-50 transition-colors">
-              <td className="p-3 border-b">{aula.modalidade}</td>
-              <td className="p-3 border-b">{new Date(aula.dataHoraInicio).toLocaleString()}</td>
-              <td className="p-3 border-b">{aula.vagasTotais}</td>
-              <td className="p-3 border-b">
-                <button
-                  onClick={() => handleEdit(aula.id)}
-                  className="bg-yellow-500 text-white px-2 py-1 rounded mr-2 cursor-pointer">
-                  Editar
-                </button>
-                <button
-                  onClick={() => handleDelete(aula.id)}
-                  className="bg-red-500 text-white px-2 py-1 rounded cursor-pointer"
-                >
-                  Excluir
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {/* Tabela padronizada */}
+      <Table
+        data={aulas}
+        columns={columns}
+        actions={actions}
+        loading={isLoading}
+        emptyMessage="Nenhuma aula encontrada. Crie a primeira aula usando o botão 'Nova Aula'."
+        className="mt-6"
+      />
     </div>
   );
 }

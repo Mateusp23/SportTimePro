@@ -106,9 +106,13 @@ export const useUnidadesLocais = (): UseUnidadesLocaisReturn => {
     try {
       const response = await api.put(`/locais/${id}`, data);
       const updated = response.data;
+      
+      // Atualizar o estado local com o objeto retornado pela API
       setLocais(prev => prev.map(l => (l.id === id ? updated : l)));
+      
       return updated;
     } catch (err) {
+      console.error('Erro ao atualizar local:', err);
       throw err;
     }
   };

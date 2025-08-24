@@ -1,10 +1,23 @@
 // app/dashboard/locais/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useUnidadesLocais } from "@/app/hooks/useUnidadesLocais";
 import Alert, { AlertType } from "@/app/components/Alert";
 import { confirmAlert } from "@/app/utils/confirmAlert";
+import Table from "@/app/components/Table";
+import EditModal, { EditField } from "@/app/components/EditModal";
+import { Edit, Trash2, Plus } from "lucide-react";
+
+type Local = {
+  id: string;
+  nome: string;
+  unidadeId: string;
+  unidade?: {
+    nome: string;
+    cidade: string;
+  };
+};
 
 export default function LocaisPage() {
   const {
@@ -21,14 +34,7 @@ export default function LocaisPage() {
 
   const [nome, setNome] = useState("");
   const [unidadeId, setUnidadeId] = useState("");
-
-  // agrupado por unidade, igual seu uso anterior
-  const locaisAgrupados = useMemo(() => {
-    return unidades.map(u => ({
-      unidade: u,
-      locais: getLocaisByUnidade(u.id),
-    }));
-  }, [unidades, getLocaisByUnidade]);
+  const [editTarget, setEditTarget] = useState<Local | null>(null);
 
   // alert
   const [showAlert, setShowAlert] = useState(false);
@@ -38,6 +44,44 @@ export default function LocaisPage() {
     message: string;
     buttonText: string;
   }>({ type: "success", title: "", message: "", buttonText: "" });
+
+  // Preparar dados para a tabela
+  const tableData = useMemo(() => {
+    return locais.map(local => ({
+      ...local,
+      unidade: unidades.find(u => u.id === local.unidadeId)
+    }));
+  }, [locais, unidades]);
+
+  // Configuração dos campos para o modal de edição
+  const editFields: EditField[] = [
+    {
+      key: 'nome',
+      label: 'Nome do Local',
+      type: 'text',
+      placeholder: 'Digite o nome do local',
+      required: true,
+      validation: (value) => {
+        if (value.trim().length < 2) {
+          return 'Nome deve ter pelo menos 2 caracteres';
+        }
+        if (value.trim().length > 50) {
+          return 'Nome deve ter no máximo 50 caracteres';
+        }
+        return null;
+      }
+    },
+    {
+      key: 'unidadeId',
+      label: 'Unidade',
+      type: 'select',
+      required: true,
+      options: unidades.map(u => ({
+        value: u.id,
+        label: `${u.nome} — ${u.cidade}`
+      }))
+    }
+  ];
 
   // criar
   const handleCreate = async (e: React.FormEvent) => {
@@ -76,50 +120,34 @@ export default function LocaisPage() {
     }
   };
 
-  // editar (igual Unidades: usa valores do formulário superior)
-  const handleUpdate = async (id: string) => {
-    const ok = await confirmAlert({
-      type: "warning",
-      title: "Editar local",
-      message:
-        "Deseja aplicar ao local selecionado os valores informados nos campos acima?",
-      confirmText: "Sim, editar",
-      cancelText: "Cancelar",
-    });
-    if (!ok) return;
+  // editar
+  const handleUpdate = async (local: Local) => {
+    setEditTarget(local);
+  };
 
-    if (!nome.trim() && !unidadeId) {
-      setAlertCfg({
-        type: "warning",
-        title: "Nada para atualizar",
-        message: "Preencha ao menos um campo (nome ou unidade).",
-        buttonText: "OK",
-      });
-      setShowAlert(true);
-      return;
-    }
+  // Salvar edição
+  const handleSaveEdit = async (data: Record<string, string>) => {
+    if (!editTarget) return;
 
     try {
-      const payload: { nome?: string; unidadeId?: string } = {};
-      if (nome.trim()) payload.nome = nome.trim();
-      if (unidadeId) payload.unidadeId = unidadeId;
-
-      await updateLocal(id, { nome: nome.trim(), unidadeId });
+      await updateLocal(editTarget.id, {
+        nome: data.nome,
+        unidadeId: data.unidadeId
+      });
+      setEditTarget(null);
       setAlertCfg({
         type: "success",
         title: "Atualizado",
-        message: "Local atualizado com sucesso!",
+        message: "Local atualizado com sucesso.",
         buttonText: "Fechar",
       });
       setShowAlert(true);
-      // não limpo campos para facilitar múltiplas edições
-    } catch (e: any) {
-      const msg =
-        e?.response?.data?.message || "Não foi possível editar o local.";
+    } catch (error: any) {
+      console.error('Erro ao atualizar local:', error);
       setAlertCfg({
         type: "error",
         title: "Erro",
-        message: msg,
+        message: error?.response?.data?.message || "Não foi possível atualizar o local.",
         buttonText: "Tentar novamente",
       });
       setShowAlert(true);
@@ -127,9 +155,9 @@ export default function LocaisPage() {
   };
 
   // excluir
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (local: Local) => {
     const ok = await confirmAlert({
-      type: "warning",
+      type: "error",
       title: "Excluir local",
       message:
         "Tem certeza que deseja excluir este local? Essa ação não pode ser desfeita.",
@@ -139,7 +167,7 @@ export default function LocaisPage() {
     if (!ok) return;
 
     try {
-      await deleteLocal(id);
+      await deleteLocal(local.id);
       setAlertCfg({
         type: "success",
         title: "Excluído",
@@ -148,7 +176,6 @@ export default function LocaisPage() {
       });
       setShowAlert(true);
     } catch (e: any) {
-      // aqui você verá mensagens do back (ex.: “existem aulas vinculadas a este local”)
       const msg =
         e?.response?.data?.message || "Não foi possível excluir o local.";
       setAlertCfg({
@@ -161,19 +188,51 @@ export default function LocaisPage() {
     }
   };
 
+  // Configuração das colunas da tabela
+  const columns = [
+    {
+      key: 'nome' as keyof Local,
+      header: 'Nome',
+      sortable: true,
+    },
+    {
+      key: 'unidade' as keyof Local,
+      header: 'Unidade',
+      sortable: true,
+      accessor: (local: Local) => local.unidade ? `${local.unidade.nome} — ${local.unidade.cidade}` : 'N/A',
+    },
+  ];
+
+  // Configuração das ações da tabela
+  const actions = [
+    {
+      icon: Edit,
+      label: 'Editar local',
+      onClick: handleUpdate,
+      variant: 'primary' as const,
+    },
+    {
+      icon: Trash2,
+      label: 'Excluir local',
+      onClick: handleDelete,
+      variant: 'danger' as const,
+    },
+  ];
+
   return (
     <div className="bg-white p-6 rounded shadow">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-heading font-bold">Locais</h2>
         <button
           onClick={refreshData}
-          className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200"
+          className="px-3 py-2 bg-gray-100 rounded hover:bg-gray-200 flex items-center gap-2"
         >
+          <Plus className="w-4 h-4" />
           Recarregar
         </button>
       </div>
 
-      {/* Formulário (mesmo padrão da página Unidades) */}
+      {/* Formulário */}
       <form onSubmit={handleCreate} className="mb-6 flex gap-3">
         <input
           value={nome}
@@ -196,64 +255,33 @@ export default function LocaisPage() {
         <button
           type="submit"
           disabled={isMutating}
-          className="bg-primary text-white px-4 py-2 rounded hover:opacity-90 disabled:opacity-60"
+          className="bg-primary text-white px-4 py-2 rounded hover:opacity-90 disabled:opacity-60 flex items-center gap-2"
         >
+          <Plus className="w-4 h-4" />
           {isMutating ? "Salvando…" : "Criar"}
         </button>
       </form>
 
-      {/* Lista agrupada por unidade (com Ações Editar/Excluir) */}
-      {isLoading ? (
-        <p className="text-gray-500">Carregando…</p>
-      ) : (
-        <div className="space-y-4">
-          {locaisAgrupados.map((grp) => (
-            <div key={grp.unidade.id} className="border rounded overflow-hidden">
-              <div className="px-3 py-2 bg-gray-50 font-medium">
-                {grp.unidade.nome} —{" "}
-                <span className="text-gray-500">{grp.unidade.cidade}</span>
-              </div>
+      {/* Tabela padronizada */}
+      <Table
+        data={tableData}
+        columns={columns}
+        actions={actions}
+        loading={isLoading}
+        emptyMessage="Nenhum local encontrado. Crie o primeiro local usando o formulário acima."
+        className="mt-6"
+      />
 
-              {grp.locais.length === 0 ? (
-                <div className="px-3 py-2 text-gray-500">
-                  Sem locais nesta unidade.
-                </div>
-              ) : (
-                <table className="w-full">
-                  <thead>
-                    <tr className="bg-gray-50">
-                      <th className="text-left p-3">Nome</th>
-                      <th className="text-left p-3">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {grp.locais.map((l) => (
-                      <tr key={l.id} className="border-t">
-                        <td className="p-3">{l.nome}</td>
-                        <td className="p-3">
-                          <button
-                            onClick={() => handleUpdate(l.id)}
-                            className="text-blue-600 hover:text-blue-800 mr-4"
-                            title="Aplicar valores do formulário acima neste local"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            onClick={() => handleDelete(l.id)}
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            Excluir
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Modal de edição genérico */}
+      <EditModal
+        isOpen={!!editTarget}
+        title="Editar Local"
+        item={editTarget}
+        fields={editFields}
+        isSaving={isMutating}
+        onCancel={() => setEditTarget(null)}
+        onSave={handleSaveEdit}
+      />
 
       {showAlert && (
         <Alert

@@ -52,25 +52,55 @@ exports.getLocais = async (req, res) => {
 
 exports.updateLocal = async (req, res) => {
   const { id } = req.params;
-  const { nome } = req.body;
+  const { nome, unidadeId } = req.body;
   const { clienteId } = req.user;
 
   try {
+    // Verificar se a nova unidade existe e pertence ao cliente
+    if (unidadeId) {
+      const unidade = await prisma.unidade.findFirst({
+        where: { id: unidadeId, clienteId }
+      });
+
+      if (!unidade) {
+        return res.status(404).json({ message: 'Unidade não encontrada.' });
+      }
+    }
+
+    // Atualizar o local
     const local = await prisma.local.updateMany({
       where: {
         id,
         unidade: { clienteId }
       },
-      data: { nome }
+      data: { 
+        nome,
+        ...(unidadeId && { unidadeId })
+      }
     });
 
     if (local.count === 0) {
       return res.status(404).json({ message: 'Local não encontrado.' });
     }
 
-    res.json({ message: 'Local atualizado com sucesso' });
+    // Buscar o local atualizado com a unidade
+    const localAtualizado = await prisma.local.findUnique({
+      where: { id },
+      include: {
+        unidade: {
+          select: {
+            id: true,
+            nome: true,
+            cidade: true
+          }
+        }
+      }
+    });
+
+    res.json(localAtualizado);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('Erro ao atualizar local:', err);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
   }
 };
 

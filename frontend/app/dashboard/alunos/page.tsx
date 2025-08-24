@@ -2,17 +2,25 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useAlunosProfessor } from "@/app/hooks/useAlunosProfessor";
-import { useAuthStore } from "@/app/store/authStore"; // Mudança aqui
+import { useAuthStore } from "@/app/store/authStore";
 import api from "@/app/lib/api";
+import Table from "@/app/components/Table";
+import { Copy, RefreshCw, Unlink } from "lucide-react";
+
+type Aluno = {
+  id: string;
+  nome: string;
+  email: string;
+};
 
 export default function AlunosPage() {
-  const { user: me } = useAuthStore(); // Mudança aqui - usando useAuthStore em vez de useUser
+  const { user: me } = useAuthStore();
   const profId = me?.id;
   const { q, setQ, page, setPage, data, loading, unlink, refresh } =
     useAlunosProfessor(profId);
 
   const [inviteCode, setInviteCode] = useState<string>("");
-  const [isLoadingInvite, setIsLoadingInvite] = useState(false); // Novo estado para controlar loading
+  const [isLoadingInvite, setIsLoadingInvite] = useState(false);
   const inviteUrl = useMemo(() => {
     if (!inviteCode || !me?.id) return "";
     const base =
@@ -28,11 +36,9 @@ export default function AlunosPage() {
       try {
         setIsLoadingInvite(true);
         const { data } = await api.get<{ inviteCode: string }>("/invite-code");
-        console.log("Resposta da API invite-code:", data); // Log para debug
         setInviteCode(data.inviteCode);
       } catch (error) {
         console.error("Erro ao buscar código de convite:", error);
-        // Opcional: mostrar erro para o usuário
       } finally {
         setIsLoadingInvite(false);
       }
@@ -57,6 +63,35 @@ export default function AlunosPage() {
     }
   };
 
+  const handleUnlink = async (aluno: Aluno) => {
+    if (!confirm("Remover vínculo com este aluno?")) return;
+    await unlink(aluno.id);
+  };
+
+  // Configuração das colunas da tabela
+  const columns = [
+    {
+      key: 'nome' as keyof Aluno,
+      header: 'Nome',
+      sortable: true,
+    },
+    {
+      key: 'email' as keyof Aluno,
+      header: 'E-mail',
+      sortable: true,
+    },
+  ];
+
+  // Configuração das ações da tabela
+  const actions = [
+    {
+      icon: Unlink,
+      label: 'Desvincular aluno',
+      onClick: handleUnlink,
+      variant: 'danger' as const,
+    },
+  ];
+
   return (
     <div className="bg-white p-6 rounded shadow">
       <div className="flex items-center justify-between mb-6">
@@ -71,8 +106,9 @@ export default function AlunosPage() {
           <button 
             onClick={copy} 
             disabled={!inviteUrl || isLoadingInvite}
-            className="bg-primary text-white px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-primary text-white px-3 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
+            <Copy className="w-4 h-4" />
             {isLoadingInvite ? "Carregando..." : "Copiar"}
           </button>
         </div>
@@ -85,67 +121,43 @@ export default function AlunosPage() {
           placeholder="Buscar por nome ou e-mail"
           className="border px-3 py-2 rounded w-80"
         />
-        <button onClick={refresh} className="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200">
+        <button onClick={refresh} className="px-3 py-2 rounded bg-gray-100 hover:bg-gray-200 flex items-center gap-2">
+          <RefreshCw className="w-4 h-4" />
           Recarregar
         </button>
       </div>
 
-      {loading ? (
-        <div className="text-gray-500">Carregando…</div>
-      ) : data.items.length === 0 ? (
-        <div className="text-gray-500">Nenhum aluno encontrado.</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border border-gray-200 rounded-lg">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="p-3 text-left">Nome</th>
-                <th className="p-3 text-left">E-mail</th>
-                <th className="p-3 text-left">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {data.items.map((aluno) => (
-                <tr key={aluno.id} className="hover:bg-gray-50">
-                  <td className="p-3">{aluno.nome}</td>
-                  <td className="p-3 text-gray-600">{aluno.email}</td>
-                  <td className="p-3">
-                    <button
-                      className="text-red-600 hover:text-red-800"
-                      onClick={async () => {
-                        if (!confirm("Remover vínculo com este aluno?")) return;
-                        await unlink(aluno.id);
-                      }}
-                    >
-                      Desvincular
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Tabela padronizada */}
+      <Table
+        data={data.items}
+        columns={columns}
+        actions={actions}
+        loading={loading}
+        emptyMessage="Nenhum aluno encontrado. Compartilhe o link de convite para vincular alunos."
+        className="mt-6"
+      />
 
-          {/* paginação simples */}
-          <div className="flex items-center gap-3 mt-4">
-            <span className="text-sm text-gray-600">
-              Total: {data.total} — Página {data.page}
-            </span>
-            <div className="ml-auto flex gap-2">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
-                className="px-3 py-1 rounded bg-gray-100 disabled:opacity-50"
-              >
-                Anterior
-              </button>
-              <button
-                disabled={data.page * data.pageSize >= data.total}
-                onClick={() => setPage(page + 1)}
-                className="px-3 py-1 rounded bg-gray-100 disabled:opacity-50"
-              >
-                Próxima
-              </button>
-            </div>
+      {/* Paginação */}
+      {data.items.length > 0 && (
+        <div className="flex items-center gap-3 mt-4">
+          <span className="text-sm text-gray-600">
+            Total: {data.total} — Página {data.page}
+          </span>
+          <div className="ml-auto flex gap-2">
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+              className="px-3 py-1 rounded bg-gray-100 disabled:opacity-50 hover:bg-gray-200"
+            >
+              Anterior
+            </button>
+            <button
+              disabled={data.page * data.pageSize >= data.total}
+              onClick={() => setPage(page + 1)}
+              className="px-3 py-1 rounded bg-gray-100 disabled:opacity-50 hover:bg-gray-200"
+            >
+              Próxima
+            </button>
           </div>
         </div>
       )}

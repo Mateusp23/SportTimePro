@@ -5,13 +5,15 @@ import { useMemo, useState } from "react";
 import { useProfessores } from "@/app/hooks/useProfessores";
 import { useAuthStore } from "@/app/store/authStore";
 import Alert from "@/app/components/Alert";
+import Table from "@/app/components/Table";
+import { UserPlus, Crown, Shield } from "lucide-react";
 import type { Usuario } from "@/app/types/types";
 
 type FilterType = "all" | "admin" | "professor";
 
 export default function ProfessoresPage() {
   const { usuarios, isLoading, isMutating, error, tornarProfessor, tornarMeProfessor } = useProfessores();
-  const me = useAuthStore((s) => s.user); // { id, nome, email, roles, ... }
+  const me = useAuthStore((s) => s.user);
   const [filter, setFilter] = useState<FilterType>("all");
 
   const [showAlert, setShowAlert] = useState(false);
@@ -24,9 +26,9 @@ export default function ProfessoresPage() {
 
   const onlyAdmins = me?.roles?.includes("ADMIN");
 
-  const handleTornarProfessor = async (id: string) => {
+  const handleTornarProfessor = async (user: Usuario) => {
     try {
-      await tornarProfessor(id);
+      await tornarProfessor(user.id);
       setAlertConfig({
         type: "success",
         title: "Sucesso!",
@@ -116,6 +118,58 @@ export default function ProfessoresPage() {
     );
   }
 
+  // Configuração das colunas da tabela
+  const columns = [
+    {
+      key: 'nome' as keyof Usuario,
+      header: 'Nome',
+      sortable: true,
+      accessor: (user: Usuario) => (
+        <span className="font-medium">
+          {user.nome} {me?.id === user.id && <span className="text-xs text-gray-400">(você)</span>}
+        </span>
+      ),
+    },
+    {
+      key: 'email' as keyof Usuario,
+      header: 'E-mail',
+      sortable: true,
+    },
+    {
+      key: 'roles' as keyof Usuario,
+      header: 'Função',
+      sortable: true,
+      accessor: (user: Usuario) => (
+        <div className="flex gap-1 flex-wrap">
+          {user.roles.map((role) => (
+            <span
+              key={role}
+              className={`px-2 py-1 text-xs rounded-full ${role === "ADMIN"
+                  ? "bg-purple-100 text-purple-800"
+                  : role === "PROFESSOR"
+                    ? "bg-blue-100 text-blue-800"
+                    : "bg-gray-100 text-gray-800"
+                }`}
+            >
+              {role}
+            </span>
+          ))}
+        </div>
+      ),
+    },
+  ];
+
+  // Configuração das ações da tabela
+  const actions = [
+    {
+      icon: UserPlus,
+      label: 'Tornar Professor',
+      onClick: handleTornarProfessor,
+      variant: 'primary' as const,
+      className: 'hidden', // Será controlado dinamicamente
+    },
+  ];
+
   return (
     <div className="bg-white p-6 rounded shadow">
       <div className="flex items-center justify-between mb-6">
@@ -126,9 +180,10 @@ export default function ProfessoresPage() {
             <button
               onClick={handleTornarMeProfessor}
               disabled={isMutating}
-              className={`px-4 py-2 rounded-lg text-sm font-medium text-white ${isMutating ? "bg-blue-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
+              className={`px-4 py-2 rounded-lg text-sm font-medium text-white flex items-center gap-2 ${isMutating ? "bg-blue-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
                 }`}
             >
+              <UserPlus className="w-4 h-4" />
               Tornar-me Professor
             </button>
           )}
@@ -152,96 +207,40 @@ export default function ProfessoresPage() {
         <div className="flex gap-2">
           <button
             onClick={() => setFilter("all")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === "all" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${filter === "all" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
           >
+            <Shield className="w-4 h-4" />
             Todos ({counts.all})
           </button>
           <button
             onClick={() => setFilter("admin")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === "admin" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${filter === "admin" ? "bg-purple-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
           >
+            <Crown className="w-4 h-4" />
             Admins ({counts.admin})
           </button>
           <button
             onClick={() => setFilter("professor")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === "professor" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${filter === "professor" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"
               }`}
           >
+            <UserPlus className="w-4 h-4" />
             Professores ({counts.professor})
           </button>
         </div>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
-          <span className="ml-3 text-gray-600">Carregando usuários...</span>
-        </div>
-      ) : ordered.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">Nenhum usuário encontrado com o filtro selecionado.</div>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full border border-gray-200 rounded-lg">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="p-3 text-left font-medium text-gray-700 border-b">Nome</th>
-                <th className="p-3 text-left font-medium text-gray-700 border-b">E-mail</th>
-                <th className="p-3 text-left font-medium text-gray-700 border-b">Função</th>
-                <th className="p-3 text-left font-medium text-gray-700 border-b">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {ordered.map((user) => {
-                const isProf = user.roles.includes("PROFESSOR");
-                const isMe = me?.id === user.id;
-
-                return (
-                  <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="p-3 border-b font-medium">
-                      {user.nome} {isMe && <span className="text-xs text-gray-400">(você)</span>}
-                    </td>
-                    <td className="p-3 border-b text-gray-600">{user.email}</td>
-                    <td className="p-3 border-b">
-                      <div className="flex gap-1 flex-wrap">
-                        {user.roles.map((role) => (
-                          <span
-                            key={role}
-                            className={`px-2 py-1 text-xs rounded-full ${role === "ADMIN"
-                                ? "bg-purple-100 text-purple-800"
-                                : role === "PROFESSOR"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-gray-100 text-gray-800"
-                              }`}
-                          >
-                            {role}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td className="p-3 border-b">
-                      {!isProf ? (
-                        <button
-                          className={`text-sm text-white px-3 py-1 rounded transition-colors ${isMutating ? "bg-blue-300 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-700"
-                            }`}
-                          disabled={isMutating}
-                          onClick={() => handleTornarProfessor(user.id)}
-                          title="Promover a Professor"
-                        >
-                          Tornar Professor
-                        </button>
-                      ) : (
-                        <span className="text-sm text-green-600 font-medium">✓ Professor</span>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {/* Tabela padronizada */}
+      <Table
+        data={ordered}
+        columns={columns}
+        actions={actions}
+        loading={isLoading}
+        emptyMessage="Nenhum usuário encontrado com o filtro selecionado."
+        className="mt-6"
+      />
 
       {showAlert && (
         <Alert
