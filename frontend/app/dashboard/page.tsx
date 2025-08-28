@@ -2,6 +2,7 @@
 
 import { useAuthStore } from "@/app/store/authStore";
 import DashboardUnificado from "@/app/components/DashboardUnificado";
+import React from 'react';
 
 export default function DashboardPage() {
   const { user } = useAuthStore();

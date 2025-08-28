@@ -313,7 +313,12 @@ exports.getMe = async (req, res) => {
         roles: true,
         clienteId: true,
         emailConfirmado: true,
-        criadoEm: true
+        criadoEm: true,
+        telefone: true,
+        dataNascimento: true,
+        endereco: true,
+        avatarUrl: true,
+        preferencias: true
       }
     });
 

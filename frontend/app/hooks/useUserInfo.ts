@@ -7,6 +7,16 @@ export interface UserInfo {
   email: string;
   roles: string[];
   clienteId: string;
+  telefone?: string;
+  dataNascimento?: string;
+  endereco?: string;
+  avatarUrl?: string;
+  preferencias?: {
+    notificacoes?: boolean;
+    idioma?: string;
+    tema?: 'claro' | 'escuro';
+    [key: string]: any;
+  };
 }
 
 export function useUserInfo() {

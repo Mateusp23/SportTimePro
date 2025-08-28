@@ -88,3 +88,57 @@ exports.deleteUser = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// Atualizar perfil do próprio usuário
+exports.updateProfile = async (req, res) => {
+  const userId = req.user.userId;
+  const { nome, email, senha, senhaAtual, telefone, dataNascimento, endereco, avatarUrl, preferencias } = req.body;
+
+  const dataToUpdate = {};
+  if (nome) dataToUpdate.nome = nome;
+  if (email) dataToUpdate.email = email;
+  if (telefone) dataToUpdate.telefone = telefone;
+  if (dataNascimento) dataToUpdate.dataNascimento = new Date(dataNascimento);
+  if (endereco) dataToUpdate.endereco = endereco;
+  if (avatarUrl) dataToUpdate.avatarUrl = avatarUrl;
+  if (preferencias) dataToUpdate.preferencias = preferencias;
+
+  // Atualizar senha se fornecida
+  if (senha) {
+    if (!senhaAtual) {
+      return res.status(400).json({ message: 'Informe a senha atual para alterar a senha.' });
+    }
+    const bcrypt = require('bcryptjs');
+    const usuario = await prisma.usuario.findUnique({ where: { id: userId } });
+    const senhaValida = await bcrypt.compare(senhaAtual, usuario.senhaHash);
+    if (!senhaValida) {
+      return res.status(401).json({ message: 'Senha atual incorreta.' });
+    }
+    const salt = await bcrypt.genSalt(10);
+    dataToUpdate.senhaHash = await bcrypt.hash(senha, salt);
+  }
+
+  try {
+    const usuario = await prisma.usuario.update({
+      where: { id: userId },
+      data: dataToUpdate,
+      select: {
+        id: true,
+        nome: true,
+        email: true,
+        telefone: true,
+        dataNascimento: true,
+        endereco: true,
+        avatarUrl: true,
+        preferencias: true,
+        roles: true
+      }
+    });
+    res.json(usuario);
+  } catch (err) {
+    if (err.code === 'P2002') {
+      return res.status(400).json({ message: 'Email já está em uso.' });
+    }
+    res.status(500).json({ message: err.message });
+  }
+};

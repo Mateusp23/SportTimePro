@@ -13,7 +13,6 @@ import { Edit, Trash2, Plus } from "lucide-react";
 export default function AulasPage() {
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const { user, isLoading: isLoadingUser } = useUser();
   const [aulaSelecionada, setAulaSelecionada] = useState<Aula | null>(null);
   const [showEditarModal, setShowEditarModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

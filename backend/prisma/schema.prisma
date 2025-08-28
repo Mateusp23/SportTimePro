@@ -46,6 +46,13 @@ model Usuario {
   Assinatura                 Assinatura[]
   IndisponibilidadeProfessor IndisponibilidadeProfessor[]
 
+  // Novos campos para perfil
+  telefone       String?
+  dataNascimento DateTime?
+  endereco       String?
+  avatarUrl      String?
+  preferencias   Json?
+
   // vínculos professor <-> aluno
   // - como ALUNO nessa relação:
   professoresVinculos AlunoProfessor[] @relation("AlnProfs")

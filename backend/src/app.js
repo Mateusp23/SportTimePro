@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 dotenv.config();
+const path = require('path');
 
 const authRoutes = require('./routes/authRoutes');
 const planoRoutes = require('./routes/planoRoutes');
@@ -42,5 +43,6 @@ app.use('/api/agendamentos', agendamentoRoutes);
 app.use('/api', alunoProfessorRoutes);
 app.use('/api', inviteRoutes);
 app.use('/api/solicitacoes-vinculo', solicitacaoVinculoRoutes);
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 module.exports = app;

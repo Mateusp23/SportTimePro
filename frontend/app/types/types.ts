@@ -6,6 +6,16 @@ export interface Usuario {
   nome: string;
   email: string;
   roles: UserRole[];
+  telefone?: string;
+  dataNascimento?: string;
+  endereco?: string;
+  avatarUrl?: string;
+  preferencias?: {
+    notificacoes?: boolean;
+    idioma?: string;
+    tema?: 'claro' | 'escuro';
+    [key: string]: any;
+  };
 }
 
 export interface Aula {

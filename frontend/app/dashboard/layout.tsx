@@ -15,9 +15,11 @@ import {
   Building,
   Menu,
   X,
-  Bell
+  Bell,
+  User
 } from "lucide-react";
 import { useUserInfo } from "@/app/hooks/useUserInfo";
+import { confirmAlert } from "../utils/confirmAlert";
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -42,6 +44,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     if (href === '/dashboard' && pathname === '/dashboard') return true;
     if (href !== '/dashboard' && pathname.startsWith(href)) return true;
     return false;
+  };
+
+  const handleLogout = async () => {
+    const ok = await confirmAlert({
+      type: 'warning',
+      title: 'Sair',
+      message: 'Tem certeza que deseja sair?',
+      confirmText: 'Sim, sair',
+      cancelText: 'Cancelar',
+    });
+    if (ok) {
+      logout();
+      router.push('/auth/login');
+    }
   };
 
   return (
@@ -71,6 +87,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             }`}
           >
             <Home size={20} /> Início
+          </Link>
+          <Link
+            href="/dashboard/perfil"
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg transition ${
+              isActive('/dashboard/perfil')
+                ? 'bg-blue-100 text-blue-700 border border-blue-200'
+                : 'text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <User size={20} /> Meu Perfil
           </Link>
           
           {/* Menu para Professores e Admin */}
@@ -195,8 +221,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Logout */}
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200">
           <button
-            onClick={logout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition"
+            onClick={handleLogout}
+            className="w-full cursor-pointer flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition"
           >
             <LogOut size={20} />
             Sair
@@ -228,6 +254,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   {pathname === '/dashboard/aulas-aluno' && 'Minhas Aulas'}
                   {pathname === '/dashboard/agendamentos-aluno' && 'Meus Agendamentos'}
                   {pathname === '/dashboard/solicitacoes-aluno' && 'Minhas Solicitações'}
+                  {pathname === '/dashboard/perfil' && 'Meu Perfil'}
                   {pathname === '/dashboard' && 'Dashboard'}
                 </h1>
                 <p className="text-sm text-gray-600 mt-1">

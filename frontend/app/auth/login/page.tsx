@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/app/store/authStore";
 import { Mail, Lock } from "lucide-react";
 import api from "@/app/lib/api";
+import InputField from "@/app/components/InputField";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -53,30 +54,21 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="relative">
-            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="email"
-              placeholder="E-mail"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              required
-            />
-          </div>
-
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={20} />
-            <input
-              type="password"
-              placeholder="Senha"
-              value={senha}
-              onChange={(e) => setSenha(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-              required
-            />
-          </div>
-
+          <InputField
+            type="email"
+            placeholder="E-mail"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            icon={<Mail size={18} />}
+          />
+          <InputField
+            type="password"
+            placeholder="Senha"
+            value={senha}
+            onChange={(e) => setSenha(e.target.value)}
+            icon={<Lock size={18} />}
+            isPassword
+          />
           {error && (
             <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
               <p className="text-sm text-red-700">{error}</p>
@@ -86,7 +78,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary text-white py-3 rounded-lg hover:opacity-90 transition font-semibold text-lg shadow-md disabled:opacity-50"
+            className="w-full cursor-pointer bg-primary text-white py-3 rounded-lg hover:opacity-90 transition font-semibold text-lg shadow-md disabled:opacity-50"
           >
             {loading ? "Entrando..." : "Entrar"}
           </button>
