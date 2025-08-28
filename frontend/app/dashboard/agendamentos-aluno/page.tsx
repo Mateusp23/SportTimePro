@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import api from "@/app/lib/api";
 import { useUnidadesLocais } from "@/app/hooks/useUnidadesLocais";
+import Alert from '@/app/components/Alert';
 
 type Aula = {
   id: string;
@@ -68,6 +69,8 @@ export default function AgendamentosAlunoPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingAgendamento, setIsLoadingAgendamento] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [alert, setAlert] = useState<{ aulaId: string } | null>(null);
+  const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; title: string; message: string } | null>(null);
 
   // filtros
   const [dateStart, setDateStart] = useState("");
@@ -205,31 +208,30 @@ export default function AgendamentosAlunoPage() {
     }
   };
 
-  // Função para cancelar agendamento
-  const cancelarAgendamento = async (aulaId: string) => {
+  // Função para cancelar agendamento (chamada só após confirmação)
+  const cancelarAgendamentoConfirmado = async (aulaId: string) => {
     try {
       setIsLoadingAgendamento(true);
       setError(null);
-      
-      // Encontrar o agendamento
       const agendamento = meusAgendamentos.find(a => a.aulaId === aulaId);
       if (!agendamento) return;
-      
       await api.delete(`/agendamentos/${agendamento.id}`);
-      
       // Recarregar agendamentos
       const response = await api.get<Agendamento[]>("/agendamentos/aluno");
       setMeusAgendamentos(response.data);
-      
       // Atualizar status da aula
-      setAulas(prev => prev.map(aula => 
-        aula.id === aulaId ? { ...aula, agendado: false } : aula
-      ));
-      
-    } catch (error: unknown) {
-      console.error("Erro ao cancelar agendamento:", error);
-      const errorMessage = error instanceof Error ? error.message : "Erro ao cancelar agendamento";
-      setError(errorMessage);
+      setAulas(prev => prev.map(aula => aula.id === aulaId ? { ...aula, agendado: false } : aula));
+      setFeedback({
+        type: 'success',
+        title: 'Agendamento cancelado',
+        message: 'Seu agendamento foi cancelado com sucesso.'
+      });
+    } catch (error) {
+      setFeedback({
+        type: 'error',
+        title: 'Erro ao cancelar agendamento',
+        message: error instanceof Error ? error.message : 'Erro ao cancelar agendamento'
+      });
     } finally {
       setIsLoadingAgendamento(false);
     }
@@ -413,7 +415,7 @@ export default function AgendamentosAlunoPage() {
                         }`}
                         onClick={() => {
                           if (isAgendado) {
-                            cancelarAgendamento(a.id);
+                            setAlert({ aulaId: a.id });
                           } else if (!isLotado) {
                             agendarAula(a.id);
                           }
@@ -447,6 +449,28 @@ export default function AgendamentosAlunoPage() {
             Você tem <strong>{meusAgendamentos.length}</strong> aula(s) agendada(s) no total.
           </p>
         </div>
+      )}
+      {alert && (
+        <Alert
+          type="warning"
+          title="Cancelar agendamento?"
+          message="Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita."
+          onConfirm={() => {
+            cancelarAgendamentoConfirmado(alert.aulaId);
+            setAlert(null);
+          }}
+          onCancel={() => setAlert(null)}
+          confirmText="Sim, cancelar"
+          cancelText="Não"
+        />
+      )}
+      {feedback && (
+        <Alert
+          type={feedback.type}
+          title={feedback.title}
+          message={feedback.message}
+          onClose={() => setFeedback(null)}
+        />
       )}
     </div>
   );
