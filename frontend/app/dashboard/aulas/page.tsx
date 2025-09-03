@@ -17,6 +17,8 @@ export default function AulasPage() {
   const [showEditarModal, setShowEditarModal] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
+  const { user, isLoading: isLoadingUser } = useUser();
+
   const fetchAulas = async () => {
     try {
       setIsLoading(true);
@@ -58,6 +60,7 @@ export default function AulasPage() {
   };
 
   const handleOpenModal = () => {
+    if (!user || isLoadingUser) return;
     setShowModal(true);
   };
 
@@ -104,13 +107,14 @@ export default function AulasPage() {
         <button
           className="bg-primary text-white px-4 py-2 rounded hover:bg-primary/80 transition-colors cursor-pointer flex items-center gap-2"
           onClick={handleOpenModal}
+          disabled={isLoadingUser || !user}
         >
           <Plus className="w-4 h-4" />
           Nova Aula
         </button>
       </div>
 
-      {showModal && (
+      {showModal && user && (
         <NovaAulaModal
           onClose={() => setShowModal(false)}
           onCreated={fetchAulas}

@@ -1,5 +1,5 @@
 const prisma = require('../config/db');
-const { addDays, isBefore, parseISO, formatISO } = require('date-fns');
+const { addDays, isBefore, isAfter, parseISO, formatISO } = require('date-fns');
 const { isProfessorUnavailable } = require('../utils/verificaIndisponibilidade');
 
 exports.createAula = async (req, res) => {
@@ -561,5 +561,98 @@ exports.listarAulasProfessoresVinculados = async (req, res) => {
   } catch (error) {
     console.error('Erro ao listar aulas dos professores vinculados:', error);
     res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
+exports.createRecorrencia = async (req, res) => {
+  const {
+    modalidade, professorId, unidadeId, localId, inicio, fim, vagasTotais, regra, janelaGeracaoDias = 60
+  } = req.body;
+  const { clienteId } = req.user;
+  
+  if (!modalidade || !professorId || !unidadeId || !localId || !inicio || !fim || !vagasTotais || !regra) {
+    return res.status(400).json({ message: 'Campos obrigatórios faltando.' });
+  }
+  try {
+    // Cria a recorrência
+    const recorrencia = await prisma.recorrencia.create({
+      data: {
+        modalidade,
+        professorId,
+        unidadeId,
+        localId,
+        inicio: new Date(inicio),
+        fim: new Date(fim),
+        vagasTotais,
+        regra,
+        janelaGeracaoDias,
+        clienteId
+      }
+    });
+
+    // Geração das instâncias de Aula
+    const aulasCriadas = [];
+    const conflitos = [];
+    const startDate = parseISO(inicio);
+    const endDate = regra.until ? parseISO(regra.until) : addDays(startDate, janelaGeracaoDias);
+    let d = new Date(startDate);
+    let count = 0;
+    while (isBefore(d, endDate) && count < 200) {
+      let shouldCreate = false;
+      if (regra.freq === 'DAILY') {
+        shouldCreate = true;
+      } else if (regra.freq === 'WEEKLY' && Array.isArray(regra.byWeekday)) {
+        const dias = ['SU','MO','TU','WE','TH','FR','SA'];
+        const diaSemana = dias[d.getDay()];
+        shouldCreate = regra.byWeekday.includes(diaSemana);
+      }
+      if (shouldCreate) {
+        // Calcular horários
+        const dataHoraInicio = new Date(d);
+        dataHoraInicio.setHours(new Date(inicio).getHours(), new Date(inicio).getMinutes(), 0, 0);
+        const dataHoraFim = new Date(d);
+        dataHoraFim.setHours(new Date(fim).getHours(), new Date(fim).getMinutes(), 0, 0);
+        // Validação de conflito de aula do professor
+        const conflitoAula = await prisma.aula.findFirst({
+          where: {
+            professorId,
+            dataHoraInicio: { lt: dataHoraFim },
+            dataHoraFim: { gt: dataHoraInicio }
+          }
+        });
+        // Validação de indisponibilidade do professor
+        const conflitoIndisp = await prisma.indisponibilidadeProfessor.findFirst({
+          where: {
+            professorId,
+            dataInicio: { lt: dataHoraFim },
+            dataFim: { gt: dataHoraInicio }
+          }
+        });
+        if (conflitoAula || conflitoIndisp) {
+          conflitos.push({ dataHoraInicio, motivo: conflitoAula ? 'Aula existente' : 'Indisponibilidade' });
+        } else {
+          const aula = await prisma.aula.create({
+            data: {
+              modalidade,
+              professorId,
+              unidadeId,
+              localId,
+              dataHoraInicio,
+              dataHoraFim,
+              vagasTotais,
+              clienteId: req.user.clienteId,
+              seriesId: recorrencia.id,
+              isException: false,
+            }
+          });
+          aulasCriadas.push(aula);
+          count++;
+        }
+      }
+      d = addDays(d, 1);
+    }
+    res.status(201).json({ message: 'Recorrência criada e instâncias geradas', recorrencia, aulasCriadas, conflitos });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 };

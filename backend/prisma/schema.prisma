@@ -26,6 +26,7 @@ model Cliente {
 
   vinculosAlunoProfessor AlunoProfessor[]
   solicitacoesVinculo    SolicitacaoVinculo[]
+  recorrencias           Recorrencia[]
 }
 
 model Usuario {
@@ -64,6 +65,9 @@ model Usuario {
   solicitacoesEnviadas  SolicitacaoVinculo[] @relation("AlunoSolicitacoes")
   // - como PROFESSOR recebendo:
   solicitacoesRecebidas SolicitacaoVinculo[] @relation("ProfessorSolicitacoes")
+
+  // recorrências como professor
+  recorrencias Recorrencia[]
 }
 
 /**
@@ -116,22 +120,46 @@ model Assinatura {
 }
 
 model Unidade {
-  id        String   @id @default(uuid())
-  nome      String
-  cidade    String
-  cliente   Cliente  @relation(fields: [clienteId], references: [id])
-  clienteId String
-  locais    Local[]
-  aulas     Aula[]
-  criadoEm  DateTime @default(now())
+  id           String        @id @default(uuid())
+  nome         String
+  cidade       String
+  cliente      Cliente       @relation(fields: [clienteId], references: [id])
+  clienteId    String
+  locais       Local[]
+  aulas        Aula[]
+  recorrencias Recorrencia[]
+  criadoEm     DateTime      @default(now())
 }
 
 model Local {
-  id        String  @id @default(uuid())
-  nome      String
-  unidade   Unidade @relation(fields: [unidadeId], references: [id])
-  unidadeId String
-  aulas     Aula[]
+  id           String        @id @default(uuid())
+  nome         String
+  unidade      Unidade       @relation(fields: [unidadeId], references: [id])
+  unidadeId    String
+  aulas        Aula[]
+  recorrencias Recorrencia[]
+}
+
+model Recorrencia {
+  id                String   @id @default(uuid())
+  modalidade        String
+  professor         Usuario  @relation(fields: [professorId], references: [id])
+  professorId       String
+  unidade           Unidade  @relation(fields: [unidadeId], references: [id])
+  unidadeId         String
+  local             Local    @relation(fields: [localId], references: [id])
+  localId           String
+  inicio            DateTime
+  fim               DateTime
+  vagasTotais       Int
+  cliente           Cliente  @relation(fields: [clienteId], references: [id])
+  clienteId         String
+  regra             Json
+  janelaGeracaoDias Int      @default(60)
+  ativa             Boolean  @default(true)
+  criadoEm          DateTime @default(now())
+  atualizadoEm      DateTime @updatedAt
+  aulas             Aula[]   @relation("RecorrenciaAulas")
 }
 
 model Aula {
@@ -151,6 +179,10 @@ model Aula {
   agendamentos   Agendamento[]
   criadoEm       DateTime      @default(now())
   atualizadoEm   DateTime      @updatedAt
+  // Recorrência
+  seriesId       String? // id da Recorrencia
+  recorrencia    Recorrencia?  @relation("RecorrenciaAulas", fields: [seriesId], references: [id])
+  isException    Boolean       @default(false)
 }
 
 model Agendamento {
