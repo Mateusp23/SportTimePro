@@ -30,6 +30,35 @@ export interface Aula {
   professor?: { nome: string };
   unidade?: { nome: string };
   local?: { nome: string };
+  // Campos de recorrência
+  seriesId?: string;
+  isException?: boolean;
+  recorrencia?: {
+    id: string;
+    regra: any;
+    ativa: boolean;
+  };
+}
+
+export interface RecurringSeries {
+  id: string;
+  modalidade: string;
+  vagasTotais: number;
+  professorId: string;
+  unidadeId: string;
+  localId: string;
+  professor?: { nome: string };
+  unidade?: { nome: string };
+  local?: { nome: string };
+  regra: {
+    freq: 'DAILY' | 'WEEKLY' | 'MONTHLY';
+    byWeekday?: string[];
+    until?: string;
+  };
+  ativa: boolean;
+  proximasAulas: Aula[];
+  totalAulas: number;
+  criadoEm: string;
 }
 
 export interface Unidade {

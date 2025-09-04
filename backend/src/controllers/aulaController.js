@@ -129,6 +129,8 @@ exports.getAulas = async (req, res) => {
         professorId: true,
         unidadeId: true,
         localId: true,
+        seriesId: true,
+        isException: true,
         professor: { select: { nome: true } },
         unidade: { select: { nome: true } },
         local: { select: { nome: true } },
@@ -654,5 +656,110 @@ exports.createRecorrencia = async (req, res) => {
     res.status(201).json({ message: 'Recorrência criada e instâncias geradas', recorrencia, aulasCriadas, conflitos });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+
+// Listar recorrências agrupadas
+exports.getRecorrencias = async (req, res) => {
+  const { clienteId, roles, userId } = req.user;
+  
+  try {
+    const whereClause = { clienteId };
+    if (roles.includes('PROFESSOR') && !roles.includes('ADMIN')) {
+      whereClause.professorId = userId;
+    }
+
+    const recorrencias = await prisma.recorrencia.findMany({
+      where: whereClause,
+      include: {
+        professor: { select: { nome: true } },
+        unidade: { select: { nome: true } },
+        local: { select: { nome: true } },
+        aulas: {
+          where: {
+            dataHoraInicio: { gte: new Date() }
+          },
+          orderBy: { dataHoraInicio: 'asc' },
+          take: 10
+        }
+      },
+      orderBy: { criadoEm: 'desc' }
+    });
+
+    // Calcular total de aulas para cada série
+    const seriesWithTotals = await Promise.all(
+      recorrencias.map(async (recorrencia) => {
+        const totalAulas = await prisma.aula.count({
+          where: { seriesId: recorrencia.id }
+        });
+
+        return {
+          id: recorrencia.id,
+          modalidade: recorrencia.modalidade,
+          vagasTotais: recorrencia.vagasTotais,
+          professorId: recorrencia.professorId,
+          unidadeId: recorrencia.unidadeId,
+          localId: recorrencia.localId,
+          professor: recorrencia.professor,
+          unidade: recorrencia.unidade,
+          local: recorrencia.local,
+          regra: recorrencia.regra,
+          ativa: recorrencia.ativa,
+          proximasAulas: recorrencia.aulas,
+          totalAulas,
+          criadoEm: recorrencia.criadoEm
+        };
+      })
+    );
+
+    res.json({ items: seriesWithTotals });
+  } catch (error) {
+    console.error('Erro ao buscar recorrências:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
+// Deletar recorrência completa
+exports.deleteRecorrencia = async (req, res) => {
+  const { id } = req.params;
+  const { clienteId, roles, userId } = req.user;
+
+  try {
+    // Verificar se a recorrência existe e pertence ao cliente
+    const recorrencia = await prisma.recorrencia.findFirst({
+      where: { 
+        id, 
+        clienteId,
+        ...(roles.includes('PROFESSOR') && !roles.includes('ADMIN') ? { professorId: userId } : {})
+      }
+    });
+
+    if (!recorrencia) {
+      return res.status(404).json({ message: 'Recorrência não encontrada.' });
+    }
+
+    // Cancelar todas as aulas futuras da série
+    const now = new Date();
+    await prisma.agendamento.updateMany({
+      where: {
+        aula: {
+          seriesId: id,
+          dataHoraInicio: { gte: now }
+        },
+        status: 'ATIVO'
+      },
+      data: { status: 'CANCELADO' }
+    });
+
+    // Marcar recorrência como inativa
+    await prisma.recorrencia.update({
+      where: { id },
+      data: { ativa: false }
+    });
+
+    res.json({ message: 'Recorrência cancelada com sucesso.' });
+  } catch (error) {
+    console.error('Erro ao deletar recorrência:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
   }
 };
