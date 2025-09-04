@@ -7,10 +7,10 @@ import { useUser } from "@/app/hooks/useUser";
 import EditarAulaModal from "@/app/components/EditarAulaModal";
 import { Aula, RecurringSeries } from "@/app/types/types";
 import { confirmAlert } from "@/app/utils/confirmAlert";
-import Table from "@/app/components/Table";
 import RecurringSeriesCard from "@/app/components/RecurringSeriesCard";
+import AulaAvulsaCard from "@/app/components/AulaAvulsaCard";
 import AulasFilters, { FilterOptions } from "@/app/components/AulasFilters";
-import { Edit, Trash2, Plus, Calendar, Repeat, List } from "lucide-react";
+import { Plus, Calendar, Repeat, List } from "lucide-react";
 
 export default function AulasPage() {
   const [aulas, setAulas] = useState<Aula[]>([]);
@@ -61,7 +61,7 @@ export default function AulasPage() {
 
   const handleDelete = async (aula: Aula) => {
     const ok = await confirmAlert({
-      type: "warning",
+      type: "error",
       title: "Excluir aula",
       message: "Tem certeza que deseja excluir esta aula? Essa ação não pode ser desfeita.",
       confirmText: "Sim, excluir",
@@ -71,10 +71,13 @@ export default function AulasPage() {
     if (!ok) return;
 
     try {
-      await api.delete(`/aulas/${aula.id}`);
+      console.log('🗑️ Tentando excluir aula:', aula.id);
+      const response = await api.delete(`/aulas/${aula.id}`);
+      console.log('✅ Aula excluída com sucesso:', response.data);
       fetchAulas();
+      fetchRecorrencias(); // Atualiza também as recorrências caso necessário
     } catch (error) {
-      console.error("Erro ao excluir aula:", error);
+      console.error("❌ Erro ao excluir aula:", error);
     }
   };
 
@@ -188,42 +191,6 @@ export default function AulasPage() {
     return filtered;
   }, [recorrencias, filters]);
 
-  // Configuração das colunas da tabela
-  const columns = [
-    {
-      key: 'modalidade' as keyof Aula,
-      header: 'Modalidade',
-      sortable: true,
-    },
-    {
-      key: 'dataHoraInicio' as keyof Aula,
-      header: 'Data e Hora',
-      sortable: true,
-      accessor: (aula: Aula) => new Date(aula.dataHoraInicio).toLocaleString('pt-BR'),
-    },
-    {
-      key: 'vagasTotais' as keyof Aula,
-      header: 'Vagas',
-      sortable: true,
-    },
-  ];
-
-  // Configuração das ações da tabela
-  const actions = [
-    {
-      icon: Edit,
-      label: 'Editar aula',
-      onClick: handleEdit,
-      variant: 'primary' as const,
-    },
-    {
-      icon: Trash2,
-      label: 'Excluir aula',
-      onClick: handleDelete,
-      variant: 'danger' as const,
-    },
-  ];
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -282,7 +249,7 @@ export default function AulasPage() {
               }`}
             >
               <Repeat className="w-4 h-4 inline mr-2" />
-              Séries Recorrentes ({filteredRecorrencias.length})
+              Aulas Recorrentes ({filteredRecorrencias.length})
             </button>
           </nav>
         </div>
@@ -290,13 +257,31 @@ export default function AulasPage() {
         <div className="p-6">
           {/* Conteúdo das Abas */}
           {activeTab === 'single' && (
-            <Table
-              data={filteredAulas}
-              columns={columns}
-              actions={actions}
-              loading={isLoading}
-              emptyMessage="Nenhuma aula avulsa encontrada."
-            />
+            <div className="space-y-4">
+              {isLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+                  <span className="ml-3 text-gray-600">Carregando aulas...</span>
+                </div>
+              ) : filteredAulas.length === 0 ? (
+                <div className="text-center py-12 text-gray-500">
+                  <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg mb-2">Nenhuma aula avulsa encontrada</p>
+                  <p className="text-sm">Crie uma nova aula usando o botão "Nova Aula".</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {filteredAulas.map((aula) => (
+                    <AulaAvulsaCard
+                      key={aula.id}
+                      aula={aula}
+                      onEdit={handleEdit}
+                      onDelete={handleDelete}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === 'recurring' && (
@@ -334,7 +319,7 @@ export default function AulasPage() {
                 <div>
                   <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center gap-2">
                     <Repeat className="w-5 h-5" />
-                    Séries Recorrentes
+                    Aulas Recorrentes
                   </h3>
                   <div className="space-y-4">
                     {filteredRecorrencias.map((serie) => (
@@ -358,13 +343,16 @@ export default function AulasPage() {
                     <Calendar className="w-5 h-5" />
                     Aulas Avulsas
                   </h3>
-                  <Table
-                    data={filteredAulas}
-                    columns={columns}
-                    actions={actions}
-                    loading={isLoading}
-                    emptyMessage="Nenhuma aula avulsa encontrada."
-                  />
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {filteredAulas.map((aula) => (
+                      <AulaAvulsaCard
+                        key={aula.id}
+                        aula={aula}
+                        onEdit={handleEdit}
+                        onDelete={handleDelete}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
 

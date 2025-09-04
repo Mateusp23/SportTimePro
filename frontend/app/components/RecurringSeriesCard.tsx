@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { RecurringSeries } from "@/app/types/types";
-import { ChevronDown, ChevronUp, Edit, Trash2, Calendar, Clock, Users, Repeat } from "lucide-react";
+import { ChevronDown, ChevronUp, Edit, Trash2, Calendar, Clock, Users, Repeat, PinIcon, LocationEditIcon, MapPin } from "lucide-react";
 import { confirmAlert } from "@/app/utils/confirmAlert";
 
 interface RecurringSeriesCardProps {
@@ -47,10 +47,10 @@ export default function RecurringSeriesCard({
 
   const handleDeleteSeries = async () => {
     const ok = await confirmAlert({
-      type: "warning",
-      title: "Excluir série recorrente",
-      message: `Tem certeza que deseja excluir toda a série "${series.modalidade}"? Isso cancelará todas as aulas futuras desta série.`,
-      confirmText: "Sim, excluir série",
+      type: "error",
+      title: "Excluir aulas recorrentes",
+      message: `Tem certeza que deseja excluir toda a aula recorrente "${series.modalidade}"? Isso cancelará todas as aulas futuras desta série.`,
+      confirmText: "Sim, excluir aulas",
       cancelText: "Cancelar",
     });
 
@@ -61,7 +61,7 @@ export default function RecurringSeriesCard({
 
   const handleDeleteInstance = async (aulaId: string, dataHora: string) => {
     const ok = await confirmAlert({
-      type: "warning",
+      type: "error",
       title: "Cancelar aula individual",
       message: `Tem certeza que deseja cancelar apenas a aula de ${dataHora}?`,
       confirmText: "Sim, cancelar esta aula",
@@ -90,7 +90,7 @@ export default function RecurringSeriesCard({
                 <Repeat className="w-5 h-5 text-blue-600" />
                 <h3 className="text-lg font-semibold text-gray-900">{series.modalidade}</h3>
                 <span className="px-2 py-1 text-xs font-medium bg-blue-100 text-blue-700 rounded-full">
-                  Série Recorrente
+                  Aula Recorrente
                 </span>
                 {!series.ativa && (
                   <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full">
@@ -121,11 +121,14 @@ export default function RecurringSeriesCard({
               </div>
             </div>
 
-            {series.unidade && series.local && (
-              <p className="text-sm text-gray-500 mt-2">
-                📍 {series.unidade.nome} - {series.local.nome}
-              </p>
-            )}
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4" />
+              {series.unidade && series.local && (
+                <p className="text-sm text-gray-500 mt-2">
+                  {series.unidade.nome} - {series.local.nome}
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Ações */}

@@ -12,7 +12,7 @@ router.get('/', auth(['ADMIN', 'PROFESSOR']), ctrl.getAulas);
 router.get('/recorrencias', auth(['ADMIN', 'PROFESSOR']), ctrl.getRecorrencias);
 router.post('/', auth(['ADMIN', 'PROFESSOR']), ctrl.createAula);
 router.put('/:id', auth(['ADMIN', 'PROFESSOR']), ctrl.updateAula);
-router.delete('/:id', auth(['ADMIN']), ctrl.deleteAula);
+router.delete('/:id', auth(['ADMIN', 'PROFESSOR']), ctrl.deleteAula);
 router.post('/recorrentes', auth(['ADMIN', 'PROFESSOR']), ctrl.createAulasRecorrentes);
 router.post('/recorrencias', auth(['PROFESSOR', 'ADMIN']), createRecorrencia);
 router.delete('/recorrencias/:id', auth(['PROFESSOR', 'ADMIN']), ctrl.deleteRecorrencia);

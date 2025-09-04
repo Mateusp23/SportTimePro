@@ -204,9 +204,9 @@ exports.updateAula = async (req, res) => {
 
 exports.deleteAula = async (req, res) => {
   const { id: aulaId } = req.params;
-  const { clienteId, roles } = req.user;
+  const { clienteId, roles, userId } = req.user;
   
-  console.log('🔍 deleteAula - Parâmetros:', { aulaId, clienteId, roles });
+  console.log('🔍 deleteAula - Parâmetros:', { aulaId, clienteId, roles, userId });
 
   if (!roles.includes('ADMIN') && !roles.includes('PROFESSOR')) {
     return res.status(403).json({ message: 'Permissão negada' });
@@ -214,38 +214,66 @@ exports.deleteAula = async (req, res) => {
 
   try {
     // Verificar se aula existe
+    const whereClause = { id: aulaId, clienteId };
+    
+    // Se for professor, só pode deletar suas próprias aulas
+    if (roles.includes('PROFESSOR') && !roles.includes('ADMIN')) {
+      whereClause.professorId = userId;
+    }
+
     const aula = await prisma.aula.findFirst({
-      where: { id: aulaId, clienteId },
+      where: whereClause,
       include: {
-        agendamentos: {
-          where: { status: 'ATIVO' },
-          include: { aluno: { select: { id: true, nome: true, email: true } } }
-        }
+        agendamentos: true // Inclui todos os agendamentos
       }
     });
 
     if (!aula) {
-      return res.status(404).json({ message: 'Aula não encontrada.' });
+      return res.status(404).json({ message: 'Aula não encontrada ou você não tem permissão para excluí-la.' });
     }
 
-    // Cancelar todos os agendamentos ativos
-    if (aula.agendamentos.length > 0) {
-      await prisma.agendamento.updateMany({
-        where: { aulaId: aulaId, status: 'ATIVO' },
+    // Usar transação para garantir atomicidade
+    const resultado = await prisma.$transaction(async (tx) => {
+      // 1. Cancelar agendamentos ativos
+      const agendamentosAtualizados = await tx.agendamento.updateMany({
+        where: { 
+          aulaId: aulaId, 
+          status: 'ATIVO' 
+        },
         data: { status: 'CANCELADO' }
       });
 
-      // 🚩 Aqui podemos futuramente disparar emails/notificações
-      console.log(`🔔 Notificar ${aula.agendamentos.length} alunos sobre o cancelamento da aula.`);
-    }
+      // 2. Deletar todos os agendamentos
+      const agendamentosDeletados = await tx.agendamento.deleteMany({
+        where: { aulaId: aulaId }
+      });
 
-    // Excluir aula
-    await prisma.aula.delete({
-      where: { id: aulaId }
+      // 3. Deletar a aula
+      const aulaExcluida = await tx.aula.delete({
+        where: { id: aulaId }
+      });
+
+      return {
+        agendamentosCancelados: agendamentosAtualizados.count,
+        agendamentosDeletados: agendamentosDeletados.count,
+        aula: aulaExcluida
+      };
     });
 
-    res.json({ message: 'Aula excluída com sucesso e agendamentos cancelados.' });
+    console.log(`✅ Aula ${aulaId} excluída com sucesso:`, {
+      agendamentosCancelados: resultado.agendamentosCancelados,
+      agendamentosDeletados: resultado.agendamentosDeletados
+    });
+
+    res.json({ 
+      message: 'Aula excluída com sucesso e agendamentos cancelados.',
+      details: {
+        agendamentosCancelados: resultado.agendamentosCancelados,
+        agendamentosDeletados: resultado.agendamentosDeletados
+      }
+    });
   } catch (err) {
+    console.error('❌ Erro ao excluir aula:', err);
     res.status(500).json({ message: err.message });
   }
 };
