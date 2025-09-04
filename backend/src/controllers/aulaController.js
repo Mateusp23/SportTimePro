@@ -747,6 +747,412 @@ exports.getRecorrencias = async (req, res) => {
   }
 };
 
+// Listar aulas com agendamentos (para página de agendamentos)
+exports.getAulasComAgendamentos = async (req, res) => {
+  const { clienteId, roles, userId } = req.user;
+  
+  try {
+    const whereClause = { 
+      clienteId,
+      dataHoraInicio: { gte: new Date() }, // Apenas aulas futuras
+      agendamentos: {
+        some: { status: 'ATIVO' } // Apenas aulas que têm agendamentos ativos
+      }
+    };
+    
+    // Se for professor, mostrar apenas suas aulas
+    if (roles.includes('PROFESSOR') && !roles.includes('ADMIN')) {
+      whereClause.professorId = userId;
+    }
+
+    const aulas = await prisma.aula.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        modalidade: true,
+        dataHoraInicio: true,
+        dataHoraFim: true,
+        vagasTotais: true,
+        professorId: true,
+        unidadeId: true,
+        localId: true,
+        seriesId: true,
+        isException: true,
+        professor: { select: { nome: true } },
+        unidade: { select: { nome: true } },
+        local: { select: { nome: true } },
+        _count: { select: { agendamentos: { where: { status: 'ATIVO' } } } },
+        recorrencia: {
+          select: {
+            id: true,
+            regra: true,
+            ativa: true
+          }
+        }
+      },
+      orderBy: { dataHoraInicio: 'asc' }
+    });
+
+    res.json({ items: aulas });
+  } catch (error) {
+    console.error('Erro ao buscar aulas com agendamentos:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
+// Listar séries recorrentes com agendamentos (para página de agendamentos)
+exports.getRecorrenciasComAgendamentos = async (req, res) => {
+  const { clienteId, roles, userId } = req.user;
+  
+  try {
+    const whereClause = { 
+      clienteId,
+      ativa: true,
+      aulas: {
+        some: {
+          dataHoraInicio: { gte: new Date() }, // Apenas com aulas futuras
+          agendamentos: {
+            some: { status: 'ATIVO' } // Que tenham agendamentos ativos
+          }
+        }
+      }
+    };
+    
+    // Se for professor, mostrar apenas suas séries
+    if (roles.includes('PROFESSOR') && !roles.includes('ADMIN')) {
+      whereClause.professorId = userId;
+    }
+
+    const recorrencias = await prisma.recorrencia.findMany({
+      where: whereClause,
+      include: {
+        professor: { select: { nome: true } },
+        unidade: { select: { nome: true } },
+        local: { select: { nome: true } },
+        aulas: {
+          where: {
+            dataHoraInicio: { gte: new Date() },
+            agendamentos: {
+              some: { status: 'ATIVO' }
+            }
+          },
+          include: {
+            _count: { select: { agendamentos: { where: { status: 'ATIVO' } } } }
+          },
+          orderBy: { dataHoraInicio: 'asc' },
+          take: 10
+        }
+      },
+      orderBy: { criadoEm: 'desc' }
+    });
+
+    // Calcular total de aulas futuras com agendamentos para cada série
+    const seriesWithTotals = await Promise.all(
+      recorrencias.map(async (recorrencia) => {
+        const totalAulasComAgendamentos = await prisma.aula.count({
+          where: { 
+            seriesId: recorrencia.id,
+            dataHoraInicio: { gte: new Date() },
+            agendamentos: {
+              some: { status: 'ATIVO' }
+            }
+          }
+        });
+
+        return {
+          id: recorrencia.id,
+          modalidade: recorrencia.modalidade,
+          vagasTotais: recorrencia.vagasTotais,
+          professorId: recorrencia.professorId,
+          unidadeId: recorrencia.unidadeId,
+          localId: recorrencia.localId,
+          professor: recorrencia.professor,
+          unidade: recorrencia.unidade,
+          local: recorrencia.local,
+          regra: recorrencia.regra,
+          ativa: recorrencia.ativa,
+          proximasAulas: recorrencia.aulas,
+          totalAulas: totalAulasComAgendamentos,
+          criadoEm: recorrencia.criadoEm
+        };
+      })
+    );
+
+    res.json({ items: seriesWithTotals });
+  } catch (error) {
+    console.error('Erro ao buscar recorrências com agendamentos:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
+// Listar aulas futuras SEM agendamentos (para aba "Sem Agendamentos")
+exports.getAulasSemAgendamentos = async (req, res) => {
+  const { clienteId, roles, userId } = req.user;
+  
+  try {
+    const whereClause = { 
+      clienteId,
+      dataHoraInicio: { gte: new Date() }, // Apenas aulas futuras
+      agendamentos: {
+        none: { status: 'ATIVO' } // Apenas aulas que NÃO têm agendamentos ativos
+      }
+    };
+    
+    // Se for professor, mostrar apenas suas aulas
+    if (roles.includes('PROFESSOR') && !roles.includes('ADMIN')) {
+      whereClause.professorId = userId;
+    }
+
+    const aulas = await prisma.aula.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        modalidade: true,
+        dataHoraInicio: true,
+        dataHoraFim: true,
+        vagasTotais: true,
+        professorId: true,
+        unidadeId: true,
+        localId: true,
+        seriesId: true,
+        isException: true,
+        professor: { select: { nome: true } },
+        unidade: { select: { nome: true } },
+        local: { select: { nome: true } },
+        _count: { select: { agendamentos: { where: { status: 'ATIVO' } } } },
+        recorrencia: {
+          select: {
+            id: true,
+            regra: true,
+            ativa: true
+          }
+        }
+      },
+      orderBy: { dataHoraInicio: 'asc' }
+    });
+
+    res.json({ items: aulas });
+  } catch (error) {
+    console.error('Erro ao buscar aulas sem agendamentos:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
+// Listar séries recorrentes SEM agendamentos (para aba "Sem Agendamentos")
+exports.getRecorrenciasSemAgendamentos = async (req, res) => {
+  const { clienteId, roles, userId } = req.user;
+  
+  try {
+    const whereClause = { 
+      clienteId,
+      ativa: true,
+      aulas: {
+        some: {
+          dataHoraInicio: { gte: new Date() }, // Com aulas futuras
+          agendamentos: {
+            none: { status: 'ATIVO' } // Mas SEM agendamentos ativos
+          }
+        }
+      }
+    };
+    
+    // Se for professor, mostrar apenas suas séries
+    if (roles.includes('PROFESSOR') && !roles.includes('ADMIN')) {
+      whereClause.professorId = userId;
+    }
+
+    const recorrencias = await prisma.recorrencia.findMany({
+      where: whereClause,
+      include: {
+        professor: { select: { nome: true } },
+        unidade: { select: { nome: true } },
+        local: { select: { nome: true } },
+        aulas: {
+          where: {
+            dataHoraInicio: { gte: new Date() },
+            agendamentos: {
+              none: { status: 'ATIVO' }
+            }
+          },
+          include: {
+            _count: { select: { agendamentos: { where: { status: 'ATIVO' } } } }
+          },
+          orderBy: { dataHoraInicio: 'asc' },
+          take: 10
+        }
+      },
+      orderBy: { criadoEm: 'desc' }
+    });
+
+    // Calcular total de aulas futuras sem agendamentos para cada série
+    const seriesWithTotals = await Promise.all(
+      recorrencias.map(async (recorrencia) => {
+        const totalAulasSemAgendamentos = await prisma.aula.count({
+          where: { 
+            seriesId: recorrencia.id,
+            dataHoraInicio: { gte: new Date() },
+            agendamentos: {
+              none: { status: 'ATIVO' }
+            }
+          }
+        });
+
+        return {
+          id: recorrencia.id,
+          modalidade: recorrencia.modalidade,
+          vagasTotais: recorrencia.vagasTotais,
+          professorId: recorrencia.professorId,
+          unidadeId: recorrencia.unidadeId,
+          localId: recorrencia.localId,
+          professor: recorrencia.professor,
+          unidade: recorrencia.unidade,
+          local: recorrencia.local,
+          regra: recorrencia.regra,
+          ativa: recorrencia.ativa,
+          proximasAulas: recorrencia.aulas,
+          totalAulas: totalAulasSemAgendamentos,
+          criadoEm: recorrencia.criadoEm
+        };
+      })
+    );
+
+    res.json({ items: seriesWithTotals });
+  } catch (error) {
+    console.error('Erro ao buscar recorrências sem agendamentos:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
+// Listar aulas PASSADAS (para aba "Histórico")
+exports.getAulasPassadas = async (req, res) => {
+  const { clienteId, roles, userId } = req.user;
+  
+  try {
+    const whereClause = { 
+      clienteId,
+      dataHoraFim: { lt: new Date() } // Apenas aulas já finalizadas
+    };
+    
+    // Se for professor, mostrar apenas suas aulas
+    if (roles.includes('PROFESSOR') && !roles.includes('ADMIN')) {
+      whereClause.professorId = userId;
+    }
+
+    const aulas = await prisma.aula.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        modalidade: true,
+        dataHoraInicio: true,
+        dataHoraFim: true,
+        vagasTotais: true,
+        professorId: true,
+        unidadeId: true,
+        localId: true,
+        seriesId: true,
+        isException: true,
+        professor: { select: { nome: true } },
+        unidade: { select: { nome: true } },
+        local: { select: { nome: true } },
+        _count: { 
+          select: { 
+            agendamentos: true // Total de agendamentos (incluindo cancelados)
+          } 
+        },
+        recorrencia: {
+          select: {
+            id: true,
+            regra: true,
+            ativa: true
+          }
+        }
+      },
+      orderBy: { dataHoraInicio: 'desc' }, // Mais recentes primeiro
+      take: 100 // Limitar para não sobrecarregar
+    });
+
+    res.json({ items: aulas });
+  } catch (error) {
+    console.error('Erro ao buscar aulas passadas:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
+// Listar séries recorrentes com aulas PASSADAS (para aba "Histórico")
+exports.getRecorrenciasPassadas = async (req, res) => {
+  const { clienteId, roles, userId } = req.user;
+  
+  try {
+    const whereClause = { 
+      clienteId,
+      aulas: {
+        some: {
+          dataHoraFim: { lt: new Date() } // Que tenham aulas já finalizadas
+        }
+      }
+    };
+    
+    // Se for professor, mostrar apenas suas séries
+    if (roles.includes('PROFESSOR') && !roles.includes('ADMIN')) {
+      whereClause.professorId = userId;
+    }
+
+    const recorrencias = await prisma.recorrencia.findMany({
+      where: whereClause,
+      include: {
+        professor: { select: { nome: true } },
+        unidade: { select: { nome: true } },
+        local: { select: { nome: true } },
+        aulas: {
+          where: {
+            dataHoraFim: { lt: new Date() }
+          },
+          include: {
+            _count: { select: { agendamentos: true } }
+          },
+          orderBy: { dataHoraInicio: 'desc' },
+          take: 10 // Últimas 10 aulas passadas
+        }
+      },
+      orderBy: { criadoEm: 'desc' }
+    });
+
+    // Calcular total de aulas passadas para cada série
+    const seriesWithTotals = await Promise.all(
+      recorrencias.map(async (recorrencia) => {
+        const totalAulasPassadas = await prisma.aula.count({
+          where: { 
+            seriesId: recorrencia.id,
+            dataHoraFim: { lt: new Date() }
+          }
+        });
+
+        return {
+          id: recorrencia.id,
+          modalidade: recorrencia.modalidade,
+          vagasTotais: recorrencia.vagasTotais,
+          professorId: recorrencia.professorId,
+          unidadeId: recorrencia.unidadeId,
+          localId: recorrencia.localId,
+          professor: recorrencia.professor,
+          unidade: recorrencia.unidade,
+          local: recorrencia.local,
+          regra: recorrencia.regra,
+          ativa: recorrencia.ativa,
+          proximasAulas: recorrencia.aulas, // Na verdade são "aulas passadas" neste contexto
+          totalAulas: totalAulasPassadas,
+          criadoEm: recorrencia.criadoEm
+        };
+      })
+    );
+
+    res.json({ items: seriesWithTotals });
+  } catch (error) {
+    console.error('Erro ao buscar recorrências passadas:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
 // Deletar recorrência completa
 exports.deleteRecorrencia = async (req, res) => {
   const { id } = req.params;

@@ -152,27 +152,15 @@ export default function AgendamentosFilters({
           </select>
         </div>
 
-        {/* Checkboxes */}
-        <div className="space-y-3">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={filters.onlyMine}
-              onChange={(e) => updateFilter('onlyMine', e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            Somente minhas aulas
-          </label>
-          
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={filters.showOnlyUpcoming}
-              onChange={(e) => updateFilter('showOnlyUpcoming', e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            Apenas futuras
-          </label>
+        {/* Nota explicativa */}
+        <div className="space-y-2">
+          <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+              <span className="font-medium">Agendamentos</span>
+            </div>
+            <p className="text-xs mt-1">Mostrando apenas aulas futuras com alunos inscritos</p>
+          </div>
         </div>
       </div>
 
@@ -191,16 +179,6 @@ export default function AgendamentosFilters({
         {filters.modalidade && (
           <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded-full">
             {filters.modalidade}
-          </span>
-        )}
-        {filters.onlyMine && (
-          <span className="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-full">
-            Minhas aulas
-          </span>
-        )}
-        {filters.showOnlyUpcoming && (
-          <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">
-            Apenas futuras
           </span>
         )}
       </div>

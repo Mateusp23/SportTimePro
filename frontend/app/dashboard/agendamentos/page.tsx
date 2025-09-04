@@ -8,7 +8,7 @@ import AlunosDrawer from "@/app/components/AlunosDrawer";
 import AgendamentoAvulsaCard from "@/app/components/AgendamentoAvulsaCard";
 import AgendamentoSerieCard from "@/app/components/AgendamentoSerieCard";
 import AgendamentosFilters, { AgendamentoFilterOptions } from "@/app/components/AgendamentosFilters";
-import { Calendar, Repeat, List } from "lucide-react";
+import { Calendar, Repeat, List, AlertCircle, History } from "lucide-react";
 
 type Aula = {
   id: string;
@@ -91,9 +91,15 @@ export default function AgendamentosPage() {
   });
   const [aulas, setAulas] = useState<Aula[]>([]);
   const [recorrencias, setRecorrencias] = useState<RecurringSeries[]>([]);
+  const [aulasSemAgendamentos, setAulasSemAgendamentos] = useState<Aula[]>([]);
+  const [recorrenciasSemAgendamentos, setRecorrenciasSemAgendamentos] = useState<RecurringSeries[]>([]);
+  const [aulasPassadas, setAulasPassadas] = useState<Aula[]>([]);
+  const [recorrenciasPassadas, setRecorrenciasPassadas] = useState<RecurringSeries[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingRecorrencias, setIsLoadingRecorrencias] = useState(true);
-  const [activeTab, setActiveTab] = useState<'all' | 'single' | 'recurring'>('all');
+  const [isLoadingEmpty, setIsLoadingEmpty] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'single' | 'recurring' | 'empty' | 'history'>('all');
   
   // filtros
   const [filters, setFilters] = useState<AgendamentoFilterOptions>({
@@ -102,18 +108,19 @@ export default function AgendamentosPage() {
     unidadeId: "",
     localId: "",
     modalidade: "",
-    onlyMine: true,
-    showOnlyUpcoming: true
+    onlyMine: false, // Não usado, backend já filtra por role
+    showOnlyUpcoming: false // Não usado, backend já filtra apenas futuras
   });
 
-  // carregar aulas e recorrências
+  // carregar aulas e recorrências COM AGENDAMENTOS
   const fetchAulas = async () => {
     try {
       setIsLoading(true);
-      const { data } = await api.get<{ items: Aula[] }>("/aulas");
+      const { data } = await api.get<{ items: Aula[] }>("/aulas/agendamentos");
+      console.log("🔍 Aulas com agendamentos:", data.items);
       setAulas(data.items);
     } catch (error) {
-      console.error("Erro ao carregar aulas:", error);
+      console.error("Erro ao carregar aulas com agendamentos:", error);
     } finally {
       setIsLoading(false);
     }
@@ -122,12 +129,49 @@ export default function AgendamentosPage() {
   const fetchRecorrencias = async () => {
     try {
       setIsLoadingRecorrencias(true);
-      const { data } = await api.get<{ items: RecurringSeries[] }>("/aulas/recorrencias");
+      const { data } = await api.get<{ items: RecurringSeries[] }>("/aulas/agendamentos/recorrencias");
+      console.log("🔍 Séries com agendamentos:", data.items);
       setRecorrencias(data.items);
     } catch (error) {
-      console.error("Erro ao carregar recorrências:", error);
+      console.error("Erro ao carregar recorrências com agendamentos:", error);
     } finally {
       setIsLoadingRecorrencias(false);
+    }
+  };
+
+  const fetchAulasSemAgendamentos = async () => {
+    try {
+      setIsLoadingEmpty(true);
+      const [aulasResponse, recorrenciasResponse] = await Promise.all([
+        api.get<{ items: Aula[] }>("/aulas/sem-agendamentos"),
+        api.get<{ items: RecurringSeries[] }>("/aulas/sem-agendamentos/recorrencias")
+      ]);
+      console.log("🔍 Aulas sem agendamentos:", aulasResponse.data.items);
+      console.log("🔍 Séries sem agendamentos:", recorrenciasResponse.data.items);
+      setAulasSemAgendamentos(aulasResponse.data.items);
+      setRecorrenciasSemAgendamentos(recorrenciasResponse.data.items);
+    } catch (error) {
+      console.error("Erro ao carregar aulas sem agendamentos:", error);
+    } finally {
+      setIsLoadingEmpty(false);
+    }
+  };
+
+  const fetchAulasPassadas = async () => {
+    try {
+      setIsLoadingHistory(true);
+      const [aulasResponse, recorrenciasResponse] = await Promise.all([
+        api.get<{ items: Aula[] }>("/aulas/historico"),
+        api.get<{ items: RecurringSeries[] }>("/aulas/historico/recorrencias")
+      ]);
+      console.log("🔍 Aulas passadas:", aulasResponse.data.items);
+      console.log("🔍 Séries passadas:", recorrenciasResponse.data.items);
+      setAulasPassadas(aulasResponse.data.items);
+      setRecorrenciasPassadas(recorrenciasResponse.data.items);
+    } catch (error) {
+      console.error("Erro ao carregar aulas passadas:", error);
+    } finally {
+      setIsLoadingHistory(false);
     }
   };
 
@@ -135,6 +179,19 @@ export default function AgendamentosPage() {
     fetchAulas();
     fetchRecorrencias();
   }, []);
+
+  // Carregar dados quando a aba muda
+  const handleTabChange = (tab: 'all' | 'single' | 'recurring' | 'empty' | 'history') => {
+    setActiveTab(tab);
+    
+    if (tab === 'empty' && aulasSemAgendamentos.length === 0 && recorrenciasSemAgendamentos.length === 0) {
+      fetchAulasSemAgendamentos();
+    }
+    
+    if (tab === 'history' && aulasPassadas.length === 0 && recorrenciasPassadas.length === 0) {
+      fetchAulasPassadas();
+    }
+  };
 
   // handlers para ações dos cards
   const handleViewAlunos = (aulaId: string) => {
@@ -163,7 +220,7 @@ export default function AgendamentosPage() {
 
     let filtered = aulas.filter(a => !a.seriesId); // Apenas aulas avulsas
 
-    // Aplicar filtros
+    // Aplicar filtros (backend já filtra apenas futuras e com agendamentos)
     if (filters.dateStart || filters.dateEnd) {
       const start = filters.dateStart ? startOfDay(new Date(filters.dateStart)) : new Date(0);
       const end = filters.dateEnd ? endOfDay(new Date(filters.dateEnd)) : new Date('2099-12-31');
@@ -172,11 +229,6 @@ export default function AgendamentosPage() {
         const inicio = new Date(a.dataHoraInicio);
         return inicio >= start && inicio <= end;
       });
-    }
-
-    if (filters.showOnlyUpcoming) {
-      const now = new Date();
-      filtered = filtered.filter(a => new Date(a.dataHoraInicio) > now);
     }
 
     if (filters.unidadeId) {
@@ -195,14 +247,12 @@ export default function AgendamentosPage() {
       });
     }
 
-    if (filters.onlyMine && me?.id) {
-      filtered = filtered.filter(a => a.professorId === me.id);
-    }
+    // onlyMine já é aplicado no backend baseado no role do usuário
 
     return filtered.sort((a, b) => 
       new Date(a.dataHoraInicio).getTime() - new Date(b.dataHoraInicio).getTime()
     );
-  }, [aulas, filters, me?.id]);
+  }, [aulas, filters]);
 
   // Filtrar séries recorrentes
   const filteredRecorrencias = useMemo(() => {
@@ -224,12 +274,10 @@ export default function AgendamentosPage() {
       filtered = filtered.filter(s => s.localId === filters.localId);
     }
 
-    if (filters.onlyMine && me?.id) {
-      filtered = filtered.filter(s => s.professorId === me.id);
-    }
+    // onlyMine já é aplicado no backend baseado no role do usuário
 
     return filtered;
-  }, [recorrencias, filters, me?.id]);
+  }, [recorrencias, filters]);
 
   return (
     <div className="space-y-6">
@@ -252,10 +300,10 @@ export default function AgendamentosPage() {
       {/* Abas */}
       <div className="bg-white rounded-lg shadow">
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-8 px-6">
+          <nav className="flex space-x-6 px-6 overflow-x-auto">
             <button
-              onClick={() => setActiveTab('all')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              onClick={() => handleTabChange('all')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === 'all'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -265,8 +313,8 @@ export default function AgendamentosPage() {
               Todos ({filteredAulas.length + filteredRecorrencias.length})
             </button>
             <button
-              onClick={() => setActiveTab('single')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              onClick={() => handleTabChange('single')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === 'single'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -276,8 +324,8 @@ export default function AgendamentosPage() {
               Aulas Avulsas ({filteredAulas.length})
             </button>
             <button
-              onClick={() => setActiveTab('recurring')}
-              className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              onClick={() => handleTabChange('recurring')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
                 activeTab === 'recurring'
                   ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -285,6 +333,28 @@ export default function AgendamentosPage() {
             >
               <Repeat className="w-4 h-4 inline mr-2" />
               Séries Recorrentes ({filteredRecorrencias.length})
+            </button>
+            <button
+              onClick={() => handleTabChange('empty')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                activeTab === 'empty'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <AlertCircle className="w-4 h-4 inline mr-2" />
+              Sem Agendamentos ({aulasSemAgendamentos.filter(a => !a.seriesId).length + recorrenciasSemAgendamentos.length})
+            </button>
+            <button
+              onClick={() => handleTabChange('history')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
+                activeTab === 'history'
+                  ? 'border-gray-500 text-gray-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <History className="w-4 h-4 inline mr-2" />
+              Histórico ({aulasPassadas.filter(a => !a.seriesId).length + recorrenciasPassadas.length})
             </button>
           </nav>
         </div>
@@ -393,6 +463,142 @@ export default function AgendamentosPage() {
                   <Calendar className="w-16 h-16 mx-auto mb-4 text-gray-300" />
                   <p className="text-lg mb-2">Nenhum agendamento encontrado</p>
                   <p className="text-sm">Ajuste os filtros ou verifique se há aulas agendadas.</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'empty' && (
+            <div className="space-y-6">
+              {/* Séries sem agendamentos */}
+              {recorrenciasSemAgendamentos.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium text-orange-700 mb-4 flex items-center gap-2">
+                    <Repeat className="w-5 h-5" />
+                    Séries sem Agendamentos
+                  </h3>
+                  <div className="space-y-4">
+                    {recorrenciasSemAgendamentos.map((serie) => (
+                      <div key={serie.id} className="relative">
+                        <AgendamentoSerieCard
+                          series={serie}
+                          onViewAlunos={handleViewAlunos}
+                          onSkipClass={handleSkipClass}
+                          onUnskipClass={handleUnskipClass}
+                        />
+                        <div className="absolute top-4 right-4">
+                          <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">
+                            Sem inscrições
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Aulas avulsas sem agendamentos */}
+              {aulasSemAgendamentos.filter(a => !a.seriesId).length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium text-orange-700 mb-4 flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Aulas Avulsas sem Agendamentos
+                  </h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {aulasSemAgendamentos.filter(a => !a.seriesId).map((aula) => (
+                      <div key={aula.id} className="relative">
+                        <AgendamentoAvulsaCard
+                          aula={aula}
+                          onViewAlunos={handleViewAlunos}
+                        />
+                        <div className="absolute top-4 right-4">
+                          <span className="px-2 py-1 bg-orange-100 text-orange-700 text-xs rounded-full">
+                            0/{aula.vagasTotais}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Loading */}
+              {isLoadingEmpty && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+                  <span className="ml-3 text-gray-600">Carregando aulas vazias...</span>
+                </div>
+              )}
+
+              {/* Estado vazio */}
+              {!isLoadingEmpty && recorrenciasSemAgendamentos.length === 0 && aulasSemAgendamentos.filter(a => !a.seriesId).length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <AlertCircle className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg mb-2">Nenhuma aula sem agendamentos</p>
+                  <p className="text-sm">Todas as suas aulas futuras já têm alunos inscritos! 🎉</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'history' && (
+            <div className="space-y-6">
+              {/* Séries passadas */}
+              {recorrenciasPassadas.length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium text-gray-700 mb-4 flex items-center gap-2">
+                    <Repeat className="w-5 h-5" />
+                    Séries Finalizadas
+                  </h3>
+                  <div className="space-y-4">
+                    {recorrenciasPassadas.map((serie) => (
+                      <div key={serie.id} className="opacity-75">
+                        <AgendamentoSerieCard
+                          series={serie}
+                          onViewAlunos={handleViewAlunos}
+                          onSkipClass={handleSkipClass}
+                          onUnskipClass={handleUnskipClass}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Aulas avulsas passadas */}
+              {aulasPassadas.filter(a => !a.seriesId).length > 0 && (
+                <div>
+                  <h3 className="text-lg font-medium text-gray-700 mb-4 flex items-center gap-2">
+                    <Calendar className="w-5 h-5" />
+                    Aulas Avulsas Finalizadas
+                  </h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {aulasPassadas.filter(a => !a.seriesId).map((aula) => (
+                      <div key={aula.id} className="opacity-75">
+                        <AgendamentoAvulsaCard
+                          aula={aula}
+                          onViewAlunos={handleViewAlunos}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Loading */}
+              {isLoadingHistory && (
+                <div className="flex items-center justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600" />
+                  <span className="ml-3 text-gray-600">Carregando histórico...</span>
+                </div>
+              )}
+
+              {/* Estado vazio */}
+              {!isLoadingHistory && recorrenciasPassadas.length === 0 && aulasPassadas.filter(a => !a.seriesId).length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <History className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg mb-2">Nenhuma aula no histórico</p>
+                  <p className="text-sm">Ainda não há aulas finalizadas para mostrar.</p>
                 </div>
               )}
             </div>

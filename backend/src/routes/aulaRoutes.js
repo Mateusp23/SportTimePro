@@ -10,6 +10,19 @@ const { createRecorrencia } = require('../controllers/aulaController');
 // Rotas protegidas
 router.get('/', auth(['ADMIN', 'PROFESSOR']), ctrl.getAulas);
 router.get('/recorrencias', auth(['ADMIN', 'PROFESSOR']), ctrl.getRecorrencias);
+
+// Rotas específicas para agendamentos (aulas que têm alunos inscritos)
+router.get('/agendamentos', auth(['ADMIN', 'PROFESSOR']), ctrl.getAulasComAgendamentos);
+router.get('/agendamentos/recorrencias', auth(['ADMIN', 'PROFESSOR']), ctrl.getRecorrenciasComAgendamentos);
+
+// Rotas para aulas sem agendamentos (futuras mas vazias)
+router.get('/sem-agendamentos', auth(['ADMIN', 'PROFESSOR']), ctrl.getAulasSemAgendamentos);
+router.get('/sem-agendamentos/recorrencias', auth(['ADMIN', 'PROFESSOR']), ctrl.getRecorrenciasSemAgendamentos);
+
+// Rotas para histórico (aulas passadas)
+router.get('/historico', auth(['ADMIN', 'PROFESSOR']), ctrl.getAulasPassadas);
+router.get('/historico/recorrencias', auth(['ADMIN', 'PROFESSOR']), ctrl.getRecorrenciasPassadas);
+
 router.post('/', auth(['ADMIN', 'PROFESSOR']), ctrl.createAula);
 router.put('/:id', auth(['ADMIN', 'PROFESSOR']), ctrl.updateAula);
 router.delete('/:id', auth(['ADMIN', 'PROFESSOR']), ctrl.deleteAula);
