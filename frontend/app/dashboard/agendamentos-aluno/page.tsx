@@ -226,9 +226,26 @@ export default function AgendamentosAlunoPage() {
     return aulas.filter(aula => {
       const agora = new Date();
       const dataAula = new Date(aula.dataHoraInicio);
-      return dataAula > agora; // Apenas aulas futuras
+      
+      // Verificar se é aula futura
+      if (dataAula <= agora) return false;
+      
+      // Verificar se há vagas disponíveis
+      const vagasOcupadas = aula._count?.agendamentos || 0;
+      const temVagas = vagasOcupadas < aula.vagasTotais;
+      if (!temVagas) return false;
+      
+      // Verificar se o aluno já está agendado nesta aula
+      if (aula.agendado) return false;
+      
+      // Aplicar filtros de modalidade se definido
+      if (filters.modalidade && !aula.modalidade.toLowerCase().includes(filters.modalidade.toLowerCase())) {
+        return false;
+      }
+      
+      return true;
     });
-  }, [aulas]);
+  }, [aulas, filters.modalidade]);
 
   const meusAgendamentosFiltrados = useMemo(() => {
     let filtered = [...meusAgendamentos];
@@ -239,10 +256,17 @@ export default function AgendamentosAlunoPage() {
       filtered = filtered.filter(ag => ag.status === 'CANCELADO');
     }
     
+    // Aplicar filtros de modalidade se definido
+    if (filters.modalidade) {
+      filtered = filtered.filter(ag => 
+        ag.aula?.modalidade?.toLowerCase().includes(filters.modalidade.toLowerCase())
+      );
+    }
+    
     return filtered.sort((a, b) => 
       new Date(b.aula.dataHoraInicio).getTime() - new Date(a.aula.dataHoraInicio).getTime()
     );
-  }, [meusAgendamentos, filters.status]);
+  }, [meusAgendamentos, filters.status, filters.modalidade]);
 
 
   return (
@@ -421,15 +445,24 @@ export default function AgendamentosAlunoPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {seriesRecorrentes.map((serie) => (
-                    <SerieRecorrenteAlunoCard
-                      key={serie.id}
-                      serie={serie}
-                      onInscrever={handleAgendarSerie}
-                      onCancelarInscricao={handleCancelarSerie}
-                      isLoading={isLoadingAction}
-                    />
-                  ))}
+                  {seriesRecorrentes
+                    .filter(serie => {
+                      // Aplicar filtros de modalidade se definido
+                      if (filters.modalidade && !serie.modalidade.toLowerCase().includes(filters.modalidade.toLowerCase())) {
+                        return false;
+                      }
+                      return true;
+                    })
+                    .map((serie) => (
+                      <SerieRecorrenteAlunoCard
+                        key={serie.id}
+                        serie={serie}
+                        onInscrever={handleAgendarSerie}
+                        onCancelarInscricao={handleCancelarSerie}
+                        isLoading={isLoadingAction}
+                      />
+                    ))
+                  }
                 </div>
               )}
             </div>
