@@ -489,3 +489,221 @@ exports.listarHistoricoAgendamentosAluno = async (req, res) => {
     res.status(500).json({ message: 'Erro interno do servidor.' });
   }
 };
+
+// Agendar aluno em uma série recorrente completa
+exports.agendarSerieRecorrente = async (req, res) => {
+  const { serieId } = req.body;
+  const { userId: alunoId, clienteId } = req.user;
+
+  try {
+    // Verificar se o usuário é um aluno
+    const aluno = await prisma.usuario.findFirst({
+      where: { id: alunoId, roles: { has: 'ALUNO' } }
+    });
+    
+    if (!aluno) {
+      return res.status(403).json({ message: 'Apenas alunos podem acessar esta funcionalidade.' });
+    }
+
+    // Verificar se a série existe e está ativa
+    const serie = await prisma.recorrencia.findFirst({
+      where: { id: serieId, clienteId, ativa: true }
+    });
+
+    if (!serie) {
+      return res.status(404).json({ message: 'Série recorrente não encontrada ou inativa.' });
+    }
+
+    // Verificar se o aluno está vinculado ao professor
+    const vinculo = await prisma.alunoProfessor.findFirst({
+      where: {
+        alunoId: alunoId,
+        professorId: serie.professorId,
+        clienteId: clienteId
+      }
+    });
+
+    if (!vinculo) {
+      return res.status(403).json({ message: 'Você não está vinculado a este professor.' });
+    }
+
+    // Verificar se o aluno já está inscrito na série
+    const jaInscrito = await prisma.agendamento.findFirst({
+      where: {
+        alunoId: alunoId,
+        aula: {
+          seriesId: serieId
+        },
+        status: 'ATIVO'
+      }
+    });
+
+    if (jaInscrito) {
+      return res.status(400).json({ message: 'Você já está inscrito nesta série recorrente.' });
+    }
+
+    // Buscar todas as aulas futuras da série
+    const aulasFuturas = await prisma.aula.findMany({
+      where: {
+        seriesId: serieId,
+        dataHoraInicio: { gte: new Date() }
+      },
+      include: {
+        _count: { select: { agendamentos: { where: { status: 'ATIVO' } } } }
+      },
+      orderBy: { dataHoraInicio: 'asc' }
+    });
+
+    if (aulasFuturas.length === 0) {
+      return res.status(400).json({ message: 'Não há aulas futuras nesta série.' });
+    }
+
+    // Verificar se há vagas em todas as aulas
+    const aulasComVagas = [];
+    const aulasSemVagas = [];
+
+    for (const aula of aulasFuturas) {
+      const vagasOcupadas = aula._count.agendamentos;
+      if (vagasOcupadas < aula.vagasTotais) {
+        aulasComVagas.push(aula);
+      } else {
+        aulasSemVagas.push(aula);
+      }
+    }
+
+    if (aulasComVagas.length === 0) {
+      return res.status(400).json({ message: 'Todas as aulas da série estão lotadas.' });
+    }
+
+    // Criar agendamentos para todas as aulas com vagas usando transação
+    const agendamentosCriados = await prisma.$transaction(
+      aulasComVagas.map((aula) => 
+        prisma.agendamento.upsert({
+          where: { 
+            alunoId_aulaId: { alunoId: alunoId, aulaId: aula.id } 
+          },
+          update: { 
+            status: 'ATIVO' 
+          },
+          create: {
+            alunoId: alunoId,
+            aulaId: aula.id,
+            status: 'ATIVO'
+          },
+          include: {
+            aula: {
+              select: {
+                modalidade: true,
+                dataHoraInicio: true,
+                dataHoraFim: true
+              }
+            }
+          }
+        })
+      )
+    );
+
+    res.status(201).json({
+      message: `Você foi inscrito com sucesso na série recorrente!`,
+      details: {
+        serieId: serieId,
+        modalidade: serie.modalidade,
+        agendamentosCriados: agendamentosCriados.length,
+        aulasSemVagas: aulasSemVagas.length,
+        proximasAulas: agendamentosCriados.slice(0, 5).map(ag => ({
+          data: ag.aula.dataHoraInicio,
+          modalidade: ag.aula.modalidade
+        }))
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao agendar série recorrente:', error);
+    
+    // Tratar erros específicos do Prisma
+    if (error.code === 'P2002') {
+      return res.status(400).json({ message: 'Você já está inscrito em uma ou mais aulas desta série.' });
+    }
+    
+    if (error.code === 'P2025') {
+      return res.status(404).json({ message: 'Série recorrente ou aula não encontrada.' });
+    }
+    
+    // Erro customizado da nossa lógica
+    if (error.message && !error.message.includes('Prisma')) {
+      return res.status(400).json({ message: error.message });
+    }
+    
+    res.status(500).json({ 
+      message: 'Erro interno do servidor.',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+// Cancelar inscrição em uma série recorrente completa
+exports.cancelarSerieRecorrente = async (req, res) => {
+  const { serieId } = req.params;
+  const { userId: alunoId, clienteId } = req.user;
+
+  try {
+    // Verificar se o usuário é um aluno
+    const aluno = await prisma.usuario.findFirst({
+      where: { id: alunoId, roles: { has: 'ALUNO' } }
+    });
+    
+    if (!aluno) {
+      return res.status(403).json({ message: 'Apenas alunos podem acessar esta funcionalidade.' });
+    }
+
+    // Buscar todos os agendamentos ativos do aluno na série
+    const agendamentos = await prisma.agendamento.findMany({
+      where: {
+        alunoId: alunoId,
+        aula: {
+          seriesId: serieId
+        },
+        status: 'ATIVO'
+      },
+      include: {
+        aula: {
+          select: {
+            dataHoraInicio: true,
+            modalidade: true
+          }
+        }
+      }
+    });
+
+    if (agendamentos.length === 0) {
+      return res.status(404).json({ message: 'Você não está inscrito nesta série ou já cancelou.' });
+    }
+
+    // Cancelar apenas agendamentos de aulas futuras
+    const agendamentosFuturos = agendamentos.filter(ag => 
+      new Date(ag.aula.dataHoraInicio) > new Date()
+    );
+
+    if (agendamentosFuturos.length === 0) {
+      return res.status(400).json({ message: 'Não há aulas futuras para cancelar nesta série.' });
+    }
+
+    // Cancelar os agendamentos futuros
+    const cancelados = await prisma.agendamento.updateMany({
+      where: {
+        id: { in: agendamentosFuturos.map(ag => ag.id) }
+      },
+      data: { status: 'CANCELADO' }
+    });
+
+    res.json({
+      message: 'Inscrição na série recorrente cancelada com sucesso!',
+      details: {
+        agendamentosCancelados: cancelados.count,
+        aulasCanceladas: agendamentosFuturos.length
+      }
+    });
+  } catch (error) {
+    console.error('Erro ao cancelar série recorrente:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};

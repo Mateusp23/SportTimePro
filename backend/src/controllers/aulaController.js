@@ -550,10 +550,19 @@ exports.listarAulasProfessoresVinculados = async (req, res) => {
         professorId: true,
         unidadeId: true,
         localId: true,
+        seriesId: true,
+        isException: true,
         professor: { select: { nome: true, email: true } },
         unidade: { select: { nome: true } },
         local: { select: { nome: true } },
-        _count: { select: { agendamentos: true } },
+        _count: { select: { agendamentos: { where: { status: 'ATIVO' } } } },
+        recorrencia: {
+          select: {
+            id: true,
+            regra: true,
+            ativa: true
+          }
+        }
       },
       orderBy: { dataHoraInicio: "asc" },
     });
@@ -590,6 +599,127 @@ exports.listarAulasProfessoresVinculados = async (req, res) => {
 
   } catch (error) {
     console.error('Erro ao listar aulas dos professores vinculados:', error);
+    res.status(500).json({ message: 'Erro interno do servidor.' });
+  }
+};
+
+// Listar séries recorrentes disponíveis para o aluno
+exports.listarRecorrenciasDisponiveis = async (req, res) => {
+  const { userId, clienteId } = req.user;
+  
+  try {
+    // Verificar se o usuário é um aluno
+    const aluno = await prisma.usuario.findFirst({
+      where: { id: userId, roles: { has: 'ALUNO' } }
+    });
+    
+    if (!aluno) {
+      return res.status(403).json({ message: 'Apenas alunos podem acessar esta funcionalidade.' });
+    }
+
+    // Buscar professores vinculados ao aluno
+    const vinculos = await prisma.alunoProfessor.findMany({
+      where: {
+        alunoId: userId,
+        clienteId: clienteId
+      },
+      include: {
+        professor: {
+          select: {
+            id: true,
+            nome: true,
+            email: true
+          }
+        }
+      }
+    });
+
+    if (vinculos.length === 0) {
+      return res.json({
+        items: [],
+        message: 'Você não possui vínculos com professores ainda.'
+      });
+    }
+
+    // IDs dos professores vinculados
+    const professoresIds = vinculos.map(v => v.professor.id);
+
+    // Buscar séries recorrentes dos professores vinculados
+    const recorrencias = await prisma.recorrencia.findMany({
+      where: {
+        clienteId: clienteId,
+        professorId: { in: professoresIds },
+        ativa: true
+      },
+      include: {
+        professor: { select: { nome: true, email: true } },
+        unidade: { select: { nome: true } },
+        local: { select: { nome: true } },
+        aulas: {
+          where: {
+            dataHoraInicio: { gte: new Date() }
+          },
+          include: {
+            _count: { select: { agendamentos: { where: { status: 'ATIVO' } } } }
+          },
+          orderBy: { dataHoraInicio: 'asc' },
+          take: 10
+        }
+      },
+      orderBy: { criadoEm: 'desc' }
+    });
+
+    // Verificar se o aluno já está inscrito em alguma série
+    const seriesComInscricao = await Promise.all(
+      recorrencias.map(async (serie) => {
+        // Verificar se o aluno tem agendamento em alguma aula da série
+        const temAgendamento = await prisma.agendamento.findFirst({
+          where: {
+            alunoId: userId,
+            aula: {
+              seriesId: serie.id
+            },
+            status: 'ATIVO'
+          }
+        });
+
+        const totalAulasComAgendamentos = await prisma.aula.count({
+          where: { 
+            seriesId: serie.id,
+            dataHoraInicio: { gte: new Date() }
+          }
+        });
+
+        return {
+          id: serie.id,
+          modalidade: serie.modalidade,
+          vagasTotais: serie.vagasTotais,
+          professorId: serie.professorId,
+          unidadeId: serie.unidadeId,
+          localId: serie.localId,
+          professor: serie.professor,
+          unidade: serie.unidade,
+          local: serie.local,
+          regra: serie.regra,
+          ativa: serie.ativa,
+          proximasAulas: serie.aulas,
+          totalAulas: totalAulasComAgendamentos,
+          criadoEm: serie.criadoEm,
+          inscrito: !!temAgendamento
+        };
+      })
+    );
+
+    res.json({ 
+      items: seriesComInscricao,
+      professoresVinculados: vinculos.map(v => ({
+        id: v.professor.id,
+        nome: v.professor.nome,
+        email: v.professor.email
+      }))
+    });
+  } catch (error) {
+    console.error('Erro ao listar recorrências disponíveis:', error);
     res.status(500).json({ message: 'Erro interno do servidor.' });
   }
 };

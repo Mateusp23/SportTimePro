@@ -36,4 +36,7 @@ router.get('/aluno', auth(['ALUNO']), ctrl.listarAulasAluno);
 // Rota para alunos verem aulas dos professores vinculados
 router.get('/professores-vinculados', auth(['ALUNO']), ctrl.listarAulasProfessoresVinculados);
 
+// Rota para alunos verem séries recorrentes disponíveis
+router.get('/recorrencias-disponiveis', auth(['ALUNO']), ctrl.listarRecorrenciasDisponiveis);
+
 module.exports = router;
